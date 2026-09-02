@@ -121,7 +121,8 @@ async def transcribe_audio_hf(
         if browser_transcript and browser_transcript.strip():
             logger.info("Using client-side browser transcript fallback: %s", browser_transcript)
             return browser_transcript.strip()
-        return _smart_mock(question_text)
+        logger.warning("No transcript available — both Whisper and browser transcript are empty")
+        return "(Audio was recorded but could not be transcribed. Speech-to-text requires an internet connection.)"
 
     # Guard: empty file
     if not os.path.exists(audio_path):

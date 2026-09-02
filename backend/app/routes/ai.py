@@ -58,11 +58,11 @@ async def ai_health_check():
             "note": "HF_TOKEN not configured. AI services running in fallback mode.",
         }
 
-    # Ping each model (parallel via individual awaits — acceptable for health check)
-    llm_status = await hf_client.health_check(settings.HF_LLM_MODEL)
-    fallback_status = await hf_client.health_check(settings.HF_LLM_FALLBACK_MODEL)
-    whisper_status = await hf_client.health_check(settings.HF_WHISPER_MODEL)
-    embed_status = await hf_client.health_check(settings.HF_EMBEDDING_MODEL)
+    # Ping each model with appropriate endpoint type
+    llm_status = await hf_client.health_check(settings.HF_LLM_MODEL, model_type="llm")
+    fallback_status = await hf_client.health_check(settings.HF_LLM_FALLBACK_MODEL, model_type="llm")
+    whisper_status = await hf_client.health_check(settings.HF_WHISPER_MODEL, model_type="whisper")
+    embed_status = await hf_client.health_check(settings.HF_EMBEDDING_MODEL, model_type="embedding")
 
     # Check DeepFace availability locally
     try:

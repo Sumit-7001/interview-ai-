@@ -4,6 +4,9 @@ HuggingFace Inference API — Reusable async client.
 All models (LLM, Whisper, Embeddings) share this single client.
 The HF_TOKEN is read from settings only — never hardcoded here.
 Token values are never logged.
+
+Updated 2026-08: Migrated from deprecated api-inference.huggingface.co
+to new router.huggingface.co endpoints.
 """
 
 import logging
@@ -15,8 +18,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Base URL for HuggingFace Inference API
-HF_API_BASE = "https://api-inference.huggingface.co/models"
+# New base URLs (2026+)
+HF_ROUTER_BASE = "https://router.huggingface.co"
+HF_INFERENCE_BASE = f"{HF_ROUTER_BASE}/hf-inference/models"
+HF_CHAT_URL = f"{HF_ROUTER_BASE}/v1/chat/completions"
 
 # Timeouts (seconds)
 LLM_TIMEOUT = 120.0
@@ -42,7 +47,7 @@ class HuggingFaceClient:
         text = await client.generate_text(model, prompt)
     """
 
-    # ── Text Generation ───────────────────────────────────────────────────────
+    # ── Text Generation (OpenAI-compatible chat format) ───────────────────────
 
     async def generate_text(
         self,
@@ -52,18 +57,19 @@ class HuggingFaceClient:
         temperature: float = 0.3,
     ) -> Optional[str]:
         """
-        Call HuggingFace text-generation endpoint.
+        Call HuggingFace chat completions endpoint (OpenAI-compatible).
         Returns the generated text string, or None on failure.
         """
-        url = f"{HF_API_BASE}/{model}"
+        # Qwen3 models default to "thinking mode" — add /no_think to get direct answers
+        user_content = prompt
+        if "qwen" in model.lower():
+            user_content = prompt + " /no_think"
+
         payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": max_new_tokens,
-                "temperature": temperature,
-                "return_full_text": False,
-                "do_sample": True,
-            },
+            "model": model,
+            "messages": [{"role": "user", "content": user_content}],
+            "max_tokens": max_new_tokens,
+            "temperature": temperature,
         }
 
         try:
@@ -71,25 +77,27 @@ class HuggingFaceClient:
             timeout_cfg = httpx.Timeout(LLM_TIMEOUT, connect=3.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 response = await client.post(
-                    url,
+                    HF_CHAT_URL,
                     headers={**_auth_headers(), "Content-Type": "application/json"},
                     json=payload,
                 )
 
             if response.status_code == 200:
                 data = response.json()
-                # HF returns a list of dicts: [{"generated_text": "..."}]
-                if isinstance(data, list) and data:
-                    return data[0].get("generated_text", "")
-                # Some models return a single dict
-                if isinstance(data, dict):
-                    return data.get("generated_text", "")
+                # OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
+                choices = data.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    # Some models put the answer in "content", others in "reasoning_content"
+                    content = msg.get("content") or msg.get("reasoning_content", "")
+                    return content.strip() if content else content
                 return str(data)
 
             logger.error(
-                "HF generate_text HTTP %s for model %s",
+                "HF generate_text HTTP %s for model %s: %s",
                 response.status_code,
                 model,
+                response.text[:200],
             )
             return None
 
@@ -112,7 +120,7 @@ class HuggingFaceClient:
         audio_bytes: raw audio file content (WebM, WAV, MP3, etc.)
         Returns transcript string, or None on failure.
         """
-        url = f"{HF_API_BASE}/{model}"
+        url = f"{HF_INFERENCE_BASE}/{model}"
 
         try:
             timeout_cfg = httpx.Timeout(WHISPER_TIMEOUT, connect=3.0)
@@ -157,7 +165,7 @@ class HuggingFaceClient:
         Call HuggingFace feature-extraction endpoint.
         Returns a list of embedding vectors (one per input text), or None on failure.
         """
-        url = f"{HF_API_BASE}/{model}"
+        url = f"{HF_INFERENCE_BASE}/{model}"
         payload = {"inputs": texts, "options": {"wait_for_model": True}}
 
         try:
@@ -192,26 +200,42 @@ class HuggingFaceClient:
 
     # ── Health Check ──────────────────────────────────────────────────────────
 
-    async def health_check(self, model: str) -> str:
+    async def health_check(self, model: str, model_type: str = "llm") -> str:
         """
         Ping a model endpoint to check availability.
+        model_type: 'llm' for chat models, 'whisper' for ASR, 'embedding' for feature-extraction
         Returns 'available', 'loading', or 'unavailable'.
         Does NOT expose the token in the response.
         """
-        url = f"{HF_API_BASE}/{model}"
-        # Send a minimal payload — we only care about HTTP status
-        payload = {"inputs": "ping", "parameters": {"max_new_tokens": 1}}
-
         try:
             timeout_cfg = httpx.Timeout(HEALTH_TIMEOUT, connect=3.0)
-            async with httpx.AsyncClient(timeout=timeout_cfg) as client:
-                response = await client.post(
-                    url,
-                    headers={**_auth_headers(), "Content-Type": "application/json"},
-                    json=payload,
-                )
 
-            if response.status_code == 200:
+            if model_type == "llm":
+                # Use chat completions endpoint for LLM models
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 1,
+                }
+                async with httpx.AsyncClient(timeout=timeout_cfg) as client:
+                    response = await client.post(
+                        HF_CHAT_URL,
+                        headers={**_auth_headers(), "Content-Type": "application/json"},
+                        json=payload,
+                    )
+            else:
+                # Use hf-inference endpoint for Whisper & Embedding models
+                url = f"{HF_INFERENCE_BASE}/{model}"
+                payload = {"inputs": "ping", "options": {"wait_for_model": False}}
+                async with httpx.AsyncClient(timeout=timeout_cfg) as client:
+                    response = await client.post(
+                        url,
+                        headers={**_auth_headers(), "Content-Type": "application/json"},
+                        json=payload,
+                    )
+
+            if response.status_code in (200, 400):
+                # 400 = model is up but input was invalid (expected for ping)
                 return "available"
             if response.status_code == 503:
                 return "loading"

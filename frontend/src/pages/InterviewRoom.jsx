@@ -197,11 +197,20 @@ const InterviewRoom = () => {
         };
 
         rec.onerror = (e) => {
-          console.error("Speech recognition error:", e);
+          // Suppress non-critical errors that happen normally
+          if (['no-speech', 'aborted', 'network'].includes(e.error)) return;
+          console.warn("Speech recognition error:", e.error);
         };
 
         rec.onend = () => {
-          console.log("Speech recognition ended");
+          // Auto-restart if we're still recording (browser stops recognition after silence)
+          if (isRecording || mediaRecorderRef.current?.state === 'recording') {
+            try {
+              rec.start();
+            } catch (restartErr) {
+              // Already started or other issue — silently ignore
+            }
+          }
         };
 
         recognitionRef.current = rec;
@@ -605,11 +614,17 @@ const InterviewRoom = () => {
         {/* Left Side - Cam Feed */}
         <div className="flex-1 flex flex-col gap-4">
           <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-midnight-border shadow-premium relative">
-            <CameraPanel 
-              isRecording={isRecording} 
-              onEmotionUpdate={handleEmotionUpdate}
-              onEyeContactUpdate={handleEyeContactUpdate}
-            />
+            {!loading ? (
+              <CameraPanel 
+                isRecording={isRecording} 
+                onEmotionUpdate={handleEmotionUpdate}
+                onEyeContactUpdate={handleEyeContactUpdate}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-midnight">
+                <p className="text-gray-500 text-sm">Camera stopped</p>
+              </div>
+            )}
           </div>
           
           {/* Hardware instructions */}
@@ -665,10 +680,15 @@ const InterviewRoom = () => {
                     <h4 className="font-bold text-white text-sm">Voice Recording Live</h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">Microphone active. Click submit when completed.</p>
                   </div>
-                  {liveTranscript && (
+                  {liveTranscript ? (
                     <div className="w-full px-4 max-h-24 overflow-y-auto mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
                       <p className="text-[9px] text-primary-light font-bold uppercase tracking-wider mb-1">🔴 Live Transcription</p>
                       <p className="text-gray-300 italic leading-relaxed">"{liveTranscript}"</p>
+                    </div>
+                  ) : (
+                    <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
+                      <p className="text-[9px] text-yellow-400 font-bold uppercase tracking-wider mb-1">⏺ Audio Recording Active</p>
+                      <p className="text-gray-400 leading-relaxed">Live transcription unavailable (requires internet). Your audio is still being recorded and will be transcribed when you submit.</p>
                     </div>
                   )}
                   <button

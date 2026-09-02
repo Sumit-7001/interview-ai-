@@ -26,6 +26,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
   }, [isRecording, eyesOpen, onEyeContactUpdate]);
 
   // Start Webcam
+  const streamRef = useRef(null);
   useEffect(() => {
     const startWebcam = async () => {
       try {
@@ -34,6 +35,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
           video: { width: 640, height: 480 },
           audio: false 
         });
+        streamRef.current = mediaStream;
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
@@ -46,9 +48,10 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     startWebcam();
 
     return () => {
-      // Cleanup stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      // Cleanup: stop all camera tracks on unmount
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     };
   }, []);
