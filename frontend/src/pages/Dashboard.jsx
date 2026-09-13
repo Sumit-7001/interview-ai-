@@ -44,37 +44,43 @@ const Dashboard = () => {
   // Start Interview Form States
   const [role, setRole] = useState('Software Engineer');
   const [customRole, setCustomRole] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState('Mid');
+  const [experienceLevel, setExperienceLevel] = useState('Entry');
   const [interviewType, setInterviewType] = useState('Technical');
   const [creatingSession, setCreatingSession] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
     const fetchData = async () => {
       try {
-        const interviewRes = await API.get('/api/interviews');
-        setInterviews(interviewRes.data);
-      } catch (err) {
-        console.error("Failed to load interviews history:", err);
-      }
-
-      try {
-        const resumeRes = await API.get('/api/resume');
-        setResume(resumeRes.data);
-      } catch (err) {
-        // 404 is normal if no resume uploaded
-        if (err.response?.status !== 404) {
-          console.error("Failed to load resume details:", err);
+        const [interviewRes, resumeRes] = await Promise.allSettled([
+          API.get('/api/interviews', { timeout: 10000 }),
+          API.get('/api/resume', { timeout: 10000 })
+        ]);
+        if (mounted) {
+          if (interviewRes.status === 'fulfilled' && Array.isArray(interviewRes.value.data)) {
+            setInterviews(interviewRes.value.data);
+          } else {
+            setInterviews([]);
+          }
+          if (resumeRes.status === 'fulfilled') {
+            setResume(resumeRes.value.data);
+          }
         }
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      setLoading(false);
     };
     fetchData();
+    return () => { mounted = false; };
   }, []);
 
-  // Compute stats
-  const completedInterviews = interviews.filter(i => i.status === 'completed');
+  // Compute stats safely
+  const interviewList = Array.isArray(interviews) ? interviews : [];
+  const completedInterviews = interviewList.filter(i => i && i.status === 'completed');
   const numCompleted = completedInterviews.length;
   
   const avgScore = numCompleted 
@@ -90,6 +96,10 @@ const Dashboard = () => {
     return Math.round(sum / numCompleted);
   };
 
+  // ATS score from resume
+  const atsScore = resume?.ats_score ?? null;
+  const atsColor = atsScore >= 80 ? '#22c55e' : atsScore >= 60 ? '#f59e0b' : atsScore >= 40 ? '#f97316' : '#ef4444';
+
   const stats = [
     { title: "Completed Sessions", value: numCompleted, icon: CheckCircle2, description: "All-time mock interviews" },
     { title: "Average Score", value: `${avgScore}/100`, icon: Award, description: "Aggregated rating score" },
@@ -102,9 +112,9 @@ const Dashboard = () => {
     .slice(0, 5)
     .reverse()
     .map(item => ({
-      date: new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      score: item.overall_score,
-      role: item.role
+      date: item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent',
+      score: item.overall_score || 0,
+      role: item.role || 'Interview'
     }));
 
   // Radar chart data based on average metric scores
@@ -187,9 +197,9 @@ const Dashboard = () => {
         )}
 
         {/* Statistics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {stats.map((stat, idx) => (
-            <DashboardCard 
+            <DashboardCard
               key={idx}
               title={stat.title}
               value={stat.value}
@@ -198,6 +208,69 @@ const Dashboard = () => {
             />
           ))}
         </div>
+
+        {/* ATS Score Banner (shown only if resume with ATS data exists) */}
+        {resume && atsScore != null && (
+          <div className="mb-10 p-5 rounded-2xl border border-cream-border/60 bg-white shadow-sm flex flex-col md:flex-row gap-6 items-center">
+            {/* Ring mini */}
+            <div className="flex flex-col items-center shrink-0">
+              <div className="relative w-20 h-20">
+                <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(107,114,128,0.12)" strokeWidth="7" />
+                  <circle
+                    cx="40" cy="40" r="32"
+                    fill="none"
+                    stroke={atsColor}
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(atsScore / 100) * (2 * Math.PI * 32)} ${2 * Math.PI * 32}`}
+                    style={{ filter: `drop-shadow(0 0 4px ${atsColor}55)` }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-extrabold text-lg text-midnight">{atsScore}</span>
+                  <span className="text-[8px] text-gray-400 uppercase tracking-wider">ATS</span>
+                </div>
+              </div>
+            </div>
+            {/* Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-display font-bold text-midnight text-sm">Resume ATS Score</span>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: `${atsColor}18`, color: atsColor }}
+                >
+                  {atsScore >= 80 ? 'Excellent' : atsScore >= 60 ? 'Good' : atsScore >= 40 ? 'Fair' : 'Needs Improvement'}
+                </span>
+              </div>
+              {resume.ats_summary && (
+                <p className="text-xs text-gray-500 mb-3">{resume.ats_summary}</p>
+              )}
+              {/* Matched keywords */}
+              {resume.ats_matched_keywords?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {resume.ats_matched_keywords.slice(0, 12).map((kw, i) => (
+                    <span key={i} className="bg-primary/5 text-primary border border-primary/10 px-2 py-0.5 rounded text-[10px] font-medium">
+                      {kw}
+                    </span>
+                  ))}
+                  {resume.ats_matched_keywords.length > 12 && (
+                    <Link to="/resume" className="text-[10px] text-gray-400 hover:text-primary underline mt-0.5">
+                      +{resume.ats_matched_keywords.length - 12} more
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+            <Link
+              to="/resume"
+              className="shrink-0 text-xs font-bold text-primary hover:text-primary-dark underline"
+            >
+              Full ATS Report →
+            </Link>
+          </div>
+        )}
 
         {/* AI Services Status Panel */}
         <div className="mb-8">

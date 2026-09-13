@@ -16,15 +16,28 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Try optional audio imports
 try:
-    import librosa
-    import soundfile as sf
     import numpy as np
-    AUDIO_LIBS_AVAILABLE = True
-except ImportError:
-    AUDIO_LIBS_AVAILABLE = False
-    logger.warning("librosa, soundfile, or numpy is not available. Using mock audio metrics.")
+except Exception:
+    np = None
+
+_librosa = None
+_librosa_failed = False
+
+def _get_librosa():
+    global _librosa, _librosa_failed
+    if _librosa_failed:
+        return None
+    if _librosa is not None:
+        return _librosa
+    try:
+        import librosa
+        _librosa = librosa
+        return _librosa
+    except Exception as e:
+        logger.warning(f"librosa is not available ({e}). Using mock voice analysis.")
+        _librosa_failed = True
+        return None
 
 
 async def analyze_voice(file_path: str) -> Dict[str, Any]:
@@ -33,19 +46,20 @@ async def analyze_voice(file_path: str) -> Dict[str, Any]:
     Falls back gracefully if librosa is not available.
     """
     duration = 0.0
+    librosa_lib = _get_librosa()
     
-    if AUDIO_LIBS_AVAILABLE:
+    if librosa_lib is not None and np is not None:
         try:
-            y, sr = librosa.load(file_path)
-            duration = librosa.get_duration(y=y, sr=sr)
+            y, sr = librosa_lib.load(file_path)
+            duration = librosa_lib.get_duration(y=y, sr=sr)
             
             # Voice activity detection via energy threshold
-            intervals = librosa.effects.split(y, top_db=25)
+            intervals = librosa_lib.effects.split(y, top_db=25)
             active_duration = sum([(end - start) / sr for start, end in intervals])
             pause_duration = max(0.0, duration - active_duration)
             
             # Pitch variance
-            pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
+            pitches, magnitudes = librosa_lib.piptrack(y=y, sr=sr)
             pitch_variance = float(np.var(pitches[pitches > 0])) if np.any(pitches > 0) else 10.0
             
             # Filler word estimate (based on short pauses)

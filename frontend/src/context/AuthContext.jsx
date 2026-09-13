@@ -9,20 +9,26 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let mounted = true;
     const initAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const res = await API.get('/api/auth/me');
-          setUser(res.data);
-        } catch (err) {
-          console.error("Auth validation failed:", err);
-          localStorage.removeItem('token');
-        }
+      if (!token) {
+        if (mounted) setLoading(false);
+        return;
       }
-      setLoading(false);
+      try {
+        const res = await API.get('/api/auth/me', { timeout: 6000 });
+        if (mounted) setUser(res.data);
+      } catch (err) {
+        console.error("Auth validation failed:", err);
+        localStorage.removeItem('token');
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
     initAuth();
+    return () => { mounted = false; };
   }, []);
 
   const login = async (email, password) => {

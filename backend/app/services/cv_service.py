@@ -11,13 +11,32 @@ logger = logging.getLogger(__name__)
 try:
     import cv2
     import numpy as np
-    from deepface import DeepFace
     CV_LIBS_AVAILABLE = True
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-except ImportError:
+except Exception as e:
     CV_LIBS_AVAILABLE = False
-    logger.warning("cv2, numpy, or deepface is not available. Using mock cv service.")
+    face_cascade = None
+    eye_cascade = None
+    logger.warning(f"cv2 or numpy is not available: {e}. Using mock cv service.")
+
+_deepface = None
+_deepface_failed = False
+
+def _get_deepface():
+    global _deepface, _deepface_failed
+    if _deepface_failed:
+        return None
+    if _deepface is not None:
+        return _deepface
+    try:
+        from deepface import DeepFace
+        _deepface = DeepFace
+        return _deepface
+    except Exception as e:
+        logger.warning(f"DeepFace is not available ({e}). Using mock cv service.")
+        _deepface_failed = True
+        return None
 
 def decode_base64_to_cv2(base64_str: str) -> Any:
     """Decodes a base64 string to a cv2 image."""
@@ -65,35 +84,42 @@ async def analyze_emotion(base64_frame: str) -> Tuple[str, Dict[str, float], boo
         img = decode_base64_to_cv2(base64_frame)
         if img is not None:
             eyes_detected = check_eyes_detected(img)
-            try:
-                # Save to a temporary file because DeepFace sometimes prefers file paths or numpy arrays
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                    temp_path = temp_file.name
-                    cv2.imwrite(temp_path, img)
-                
-                # Analyze using DeepFace (VGG-Face default, emotion action)
-                # enforce_detection=False prevents crashes when no face is aligned
-                results = DeepFace.analyze(img_path=temp_path, actions=["emotion"], enforce_detection=False)
-                
-                # Clean up temp file
-                if temp_path and temp_file:
-                    import os
-                    os.unlink(temp_path)
-                
-                if isinstance(results, list):
-                    result = results[0]
-                else:
-                    result = results
-                
-                dominant = result.get("dominant_emotion", "neutral")
-                probabilities = result.get("emotion", {e: 0.0 for e in emotions})
-                
-                # Map deepface output floats safely
-                probs = {k.lower(): float(v) for k, v in probabilities.items()}
-                return dominant, probs, eyes_detected
-            except Exception as e:
-                logger.error(f"DeepFace analysis failed: {e}")
-                # Fall through to mock logic
+            deepface_lib = _get_deepface()
+            if deepface_lib is not None:
+                temp_path = None
+                try:
+                    # Save to a temporary file because DeepFace sometimes prefers file paths or numpy arrays
+                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                        temp_path = temp_file.name
+                        cv2.imwrite(temp_path, img)
+                    
+                    # Analyze using DeepFace (VGG-Face default, emotion action)
+                    # enforce_detection=False prevents crashes when no face is aligned
+                    results = deepface_lib.analyze(img_path=temp_path, actions=["emotion"], enforce_detection=False)
+                    
+                    # Clean up temp file
+                    if temp_path and os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                    
+                    if isinstance(results, list):
+                        result = results[0]
+                    else:
+                        result = results
+                    
+                    dominant = result.get("dominant_emotion", "neutral")
+                    probabilities = result.get("emotion", {e: 0.0 for e in emotions})
+                    
+                    # Map deepface output floats safely
+                    probs = {k.lower(): float(v) for k, v in probabilities.items()}
+                    return dominant, probs, eyes_detected
+                except Exception as e:
+                    logger.error(f"DeepFace analysis failed: {e}")
+                    if temp_path and os.path.exists(temp_path):
+                        try:
+                            os.unlink(temp_path)
+                        except Exception:
+                            pass
+                    # Fall through to mock logic
 
     # High-fidelity Simulation Mock Logic
     # Bias slightly towards neutral (70%) and happy (20%) or surprise (10%) as typical interview states

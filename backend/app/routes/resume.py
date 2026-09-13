@@ -6,6 +6,9 @@ from bson import ObjectId
 from app.database import get_database
 from app.schemas.resume import ResumeOut
 from app.services.auth_service import get_current_user
+from app.ai.ats_scorer import calculate_ats_score
+from app.ai.resume_parser import parse_resume_to_structured_context
+from app.config import settings
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
@@ -73,6 +76,7 @@ def parse_experience_and_education(text: str) -> tuple:
         
     return exp_list[:3], edu_list[:2]
 
+
 @router.post("/upload", response_model=ResumeOut, status_code=status.HTTP_201_CREATED)
 async def upload_resume(
     file: UploadFile = File(...),
@@ -98,10 +102,6 @@ async def upload_resume(
     # Parse PDF contents
     if ext == "pdf":
         try:
-            # We can use a simple pdf parser or fallback to reading raw bytes as text for mock purposes
-            # Let's try to parse using pdfminer or similar if available, or just convert bytes
-            # For robustness, we will perform a basic text extract from standard PDF byte chunks 
-            # if library import fails, or fallback.
             try:
                 import pypdf
                 from io import BytesIO
@@ -109,13 +109,23 @@ async def upload_resume(
                 pages_text = [page.extract_text() for page in reader.pages]
                 parsed_text = "\n".join(pages_text)
             except ImportError:
-                # If pypdf is not installed, extract whatever string elements we can or use basic decode
                 parsed_text = contents.decode("utf-8", errors="ignore")
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to parse PDF file: {str(e)}"
             )
+    elif ext == "docx":
+        try:
+            try:
+                import docx
+                from io import BytesIO
+                doc = docx.Document(BytesIO(contents))
+                parsed_text = "\n".join([para.text for para in doc.paragraphs])
+            except ImportError:
+                parsed_text = contents.decode("utf-8", errors="ignore")
+        except Exception as e:
+            parsed_text = contents.decode("utf-8", errors="ignore")
     else:
         # Standard txt decode
         parsed_text = contents.decode("utf-8", errors="ignore")
@@ -126,6 +136,32 @@ async def upload_resume(
     # Extract structural details
     skills = extract_skills_from_text(parsed_text)
     experience, education = parse_experience_and_education(parsed_text)
+    resume_context = await parse_resume_to_structured_context(parsed_text)
+    
+    # ── ATS Scoring ────────────────────────────────────────────────────────────
+    ats_result = None
+    if settings.ATS_ENABLED:
+        try:
+            # Determine role context from user's most recent interview or default
+            db_check = get_database()
+            last_interview = await db_check["interviews"].find_one(
+                {"user_id": ObjectId(current_user["id"])},
+                sort=[("created_at", -1)]
+            )
+            role_for_ats = last_interview.get("role", "Software Engineer") if last_interview else "Software Engineer"
+            ats_result = calculate_ats_score(parsed_text, role_for_ats)
+        except Exception as e:
+            # ATS scoring is non-critical — don't fail the upload
+            import logging
+            logging.getLogger(__name__).warning(f"ATS scoring failed (non-critical): {e}")
+            ats_result = {
+                "score": 0,
+                "matched_keywords": skills[:10],
+                "missing_keywords": [],
+                "section_scores": {},
+                "suggestions": ["ATS scoring temporarily unavailable."],
+                "summary": "Resume uploaded successfully.",
+            }
     
     # Save to MongoDB
     db = get_database()
@@ -140,7 +176,15 @@ async def upload_resume(
         "skills": skills if skills else ["General TechStack"],
         "experience": experience,
         "education": education,
-        "uploaded_at": datetime.utcnow()
+        "resume_context": resume_context,
+        "uploaded_at": datetime.utcnow(),
+        # ATS fields (NEW)
+        "ats_score": ats_result["score"] if ats_result else None,
+        "ats_matched_keywords": ats_result["matched_keywords"] if ats_result else [],
+        "ats_missing_keywords": ats_result["missing_keywords"] if ats_result else [],
+        "ats_section_scores": ats_result["section_scores"] if ats_result else {},
+        "ats_suggestions": ats_result["suggestions"] if ats_result else [],
+        "ats_summary": ats_result["summary"] if ats_result else "",
     }
     
     result = await db["resumes"].insert_one(resume_doc)
@@ -150,6 +194,7 @@ async def upload_resume(
     created["id"] = str(created["_id"])
     return created
 
+
 @router.get("", response_model=Optional[ResumeOut])
 async def get_resume(current_user: dict = Depends(get_current_user)):
     db = get_database()
@@ -158,3 +203,36 @@ async def get_resume(current_user: dict = Depends(get_current_user)):
         return None
     resume["id"] = str(resume["_id"])
     return resume
+
+
+@router.post("/analyze-ats")
+async def analyze_resume_ats(
+    role: str = "Software Engineer",
+    current_user: dict = Depends(get_current_user)
+):
+    """Re-run ATS scoring on the existing resume for a specific role."""
+    db = get_database()
+    resume = await db["resumes"].find_one({"user_id": ObjectId(current_user["id"])})
+    if not resume:
+        raise HTTPException(status_code=404, detail="No resume found. Please upload a resume first.")
+    
+    parsed_text = resume.get("parsed_text", "")
+    if not parsed_text.strip():
+        raise HTTPException(status_code=400, detail="Resume text is empty.")
+    
+    ats_result = calculate_ats_score(parsed_text, role)
+    
+    # Update in MongoDB
+    await db["resumes"].update_one(
+        {"_id": resume["_id"]},
+        {"$set": {
+            "ats_score": ats_result["score"],
+            "ats_matched_keywords": ats_result["matched_keywords"],
+            "ats_missing_keywords": ats_result["missing_keywords"],
+            "ats_section_scores": ats_result["section_scores"],
+            "ats_suggestions": ats_result["suggestions"],
+            "ats_summary": ats_result["summary"],
+        }}
+    )
+    
+    return ats_result

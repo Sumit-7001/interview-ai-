@@ -1,15 +1,16 @@
 from io import BytesIO
 from datetime import datetime
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 from typing import Dict, Any
 
 def generate_pdf_report(interview_data: Dict[str, Any]) -> BytesIO:
     """
     Generates a beautifully styled PDF report containing mock interview results and insights.
     """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,

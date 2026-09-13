@@ -76,4 +76,6 @@ async def login_swagger(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: dict = Depends(get_current_user)):
+    if "created_at" not in current_user or current_user["created_at"] is None:
+        current_user["created_at"] = datetime.utcnow()
     return current_user

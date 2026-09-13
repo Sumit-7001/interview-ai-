@@ -1,6 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
+import bcrypt
+# Compatibility fix: bcrypt >= 4.1.0 removed __about__ which passlib 1.7.4 checks
+if not hasattr(bcrypt, "__about__"):
+    class _BcryptAbout:
+        __version__ = getattr(bcrypt, "__version__", "4.0.0")
+    bcrypt.__about__ = _BcryptAbout()
+
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -30,6 +37,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
     return encoded_jwt
 
+def decode_token(token: str) -> dict:
+    """
+    Decode a JWT token and return the payload dict.
+    Raises JWTError on invalid/expired tokens.
+    Used by WebSocket auth (non-HTTP context).
+    """
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,12 +59,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
+
     db = get_database()
     user = await db["users"].find_one({"_id": ObjectId(user_id)})
     if user is None:
         raise credentials_exception
-    
+
     # Return user model with string ID
     user["id"] = str(user["_id"])
     return user
+

@@ -8,6 +8,7 @@ Provides:
 SECURITY: No secrets are ever returned in responses.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -58,11 +59,13 @@ async def ai_health_check():
             "note": "HF_TOKEN not configured. AI services running in fallback mode.",
         }
 
-    # Ping each model with appropriate endpoint type
-    llm_status = await hf_client.health_check(settings.HF_LLM_MODEL, model_type="llm")
-    fallback_status = await hf_client.health_check(settings.HF_LLM_FALLBACK_MODEL, model_type="llm")
-    whisper_status = await hf_client.health_check(settings.HF_WHISPER_MODEL, model_type="whisper")
-    embed_status = await hf_client.health_check(settings.HF_EMBEDDING_MODEL, model_type="embedding")
+    # Ping models concurrently
+    llm_status, fallback_status, whisper_status, embed_status = await asyncio.gather(
+        hf_client.health_check(settings.HF_LLM_MODEL, model_type="llm"),
+        hf_client.health_check(settings.HF_LLM_FALLBACK_MODEL, model_type="llm"),
+        hf_client.health_check(settings.HF_WHISPER_MODEL, model_type="whisper"),
+        hf_client.health_check(settings.HF_EMBEDDING_MODEL, model_type="embedding"),
+    )
 
     # Check DeepFace availability locally
     try:

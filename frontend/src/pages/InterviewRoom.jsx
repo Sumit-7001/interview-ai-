@@ -1,66 +1,119 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  Mic, 
-  Square, 
-  ArrowRight, 
-  Video, 
-  Volume2, 
+import {
+  Mic,
+  Square,
+  ArrowRight,
+  Volume2,
+  VolumeX,
   AlertCircle,
   HelpCircle,
   Clock,
   Sparkles,
-  Award
+  Award,
+  MessageSquare,
+  Wifi,
+  WifiOff,
+  ChevronDown,
+  ChevronUp,
+  Brain,
+  CheckCircle2
 } from 'lucide-react';
 import API from '../services/api';
 import CameraPanel from '../components/CameraPanel';
 import Sidebar from '../components/Sidebar';
 
+// ── Text-to-Speech helper using Web Speech API ──────────────────────────────
+const speakText = (text, { rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) => {
+  if (!window.speechSynthesis || !text) return;
+  window.speechSynthesis.cancel(); // Stop any ongoing speech
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = rate;
+  utter.pitch = pitch;
+  utter.volume = volume;
+  utter.lang = 'en-US';
+  // Prefer a natural voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes('Google US English') ||
+    v.name.includes('Samantha') ||
+    v.name.includes('Alex') ||
+    (v.lang === 'en-US' && !v.name.includes('Google'))
+  );
+  if (preferred) utter.voice = preferred;
+  window.speechSynthesis.speak(utter);
+  return utter;
+};
+
+const stopSpeech = () => {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+};
+
 const InterviewRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // Config form states for id === 'new'
   const [role, setRole] = useState('Software Engineer');
   const [customRole, setCustomRole] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState('Mid');
+  const [experienceLevel, setExperienceLevel] = useState('Entry');
   const [interviewType, setInterviewType] = useState('Technical');
   const [creatingSession, setCreatingSession] = useState(false);
   const [hasResume, setHasResume] = useState(false);
-  
+
   const [interview, setInterview] = useState(null);
-  const [currentQIndex, setCurrentQIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  
+
   // Media permission screen state
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [checkingPermissions, setCheckingPermissions] = useState(true);
-  
+
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
   const [timer, setTimer] = useState(0);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [currentGrading, setCurrentGrading] = useState(null);
-  const [aiError, setAiError] = useState(null); // toast for AI service errors
-  
-  // Metrics accumulation during current question
+  const [aiError, setAiError] = useState(null);
+
+  // Metrics accumulation
   const [emotionsHistory, setEmotionsHistory] = useState([]);
   const [eyeContactHistory, setEyeContactHistory] = useState([]);
-  
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
-  
-  // Browser Speech Recognition states & refs
-  const [browserTranscript, setBrowserTranscript] = useState("");
-  const [liveTranscript, setLiveTranscript] = useState("");
+
+  // Browser Speech Recognition
+  const [browserTranscript, setBrowserTranscript] = useState('');
+  const [liveTranscript, setLiveTranscript] = useState('');
   const recognitionRef = useRef(null);
-  
-  // Typing fallback mode states
+
+  // Typing fallback
   const [isTypingMode, setIsTypingMode] = useState(false);
-  const [typedAnswer, setTypedAnswer] = useState("");
-  
-  // Fetch Interview details
+  const [typedAnswer, setTypedAnswer] = useState('');
+
+  // ── Dynamic Interview (WebSocket) Mode ────────────────────────────────────
+  const [wsMode, setWsMode] = useState(false); // true = using WebSocket
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsConnecting, setWsConnecting] = useState(false);
+  const wsRef = useRef(null);
+  const wsAttemptedRef = useRef(false);
+
+  // Dynamic interview state
+  const [dynamicQuestion, setDynamicQuestion] = useState(null); // {question, question_number, stage, difficulty}
+  const [lastFeedback, setLastFeedback] = useState(null); // Retain previous answer analysis
+  const [aiThinking, setAiThinking] = useState(false);
+  const [conversationLog, setConversationLog] = useState([]);
+  const [showLog, setShowLog] = useState(false);
+
+  // TTS
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+
+  // REST mode (fallback)
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+
+  // ── Load initial data ────────────────────────────────────────────────────
   const fetchSession = async () => {
     try {
       const res = await API.get(`/api/interviews/${id}`);
@@ -69,14 +122,11 @@ const InterviewRoom = () => {
         return;
       }
       setInterview(res.data);
-      
-      // Determine index of first unanswered question
       const unansweredIdx = res.data.questions.findIndex(q => q.answer_text === null);
-      if (unansweredIdx !== -1) {
-        setCurrentQIndex(unansweredIdx);
-      }
+      if (unansweredIdx !== -1) setCurrentQIndex(unansweredIdx);
+      else if (res.data.questions.length === 0) setCurrentQIndex(0);
     } catch (err) {
-      console.error("Failed to load interview room session:", err);
+      console.error('Failed to load interview room session:', err);
     } finally {
       setLoading(false);
     }
@@ -88,7 +138,7 @@ const InterviewRoom = () => {
         try {
           const resumeRes = await API.get('/api/resume');
           setHasResume(!!resumeRes.data);
-        } catch (err) {
+        } catch {
           setHasResume(false);
         } finally {
           setLoading(false);
@@ -100,21 +150,19 @@ const InterviewRoom = () => {
     }
   }, [id]);
 
-  // Request media permissions initially
+  // Permissions check
   useEffect(() => {
     if (id === 'new') {
       setPermissionsGranted(true);
       setCheckingPermissions(false);
       return;
     }
-
     const checkPermissions = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        stream.getTracks().forEach(track => track.stop()); // close immediately
+        stream.getTracks().forEach(track => track.stop());
         setPermissionsGranted(true);
-      } catch (err) {
-        console.error("Permissions check failed:", err);
+      } catch {
         setPermissionsGranted(false);
       } finally {
         setCheckingPermissions(false);
@@ -123,105 +171,264 @@ const InterviewRoom = () => {
     checkPermissions();
   }, [id]);
 
-  // Timer lifecycle during recording
+  // Timer
   useEffect(() => {
     if (isRecording) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimer(prev => prev + 1);
-      }, 1000);
+      timerIntervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
     } else {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     }
-
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
   }, [isRecording]);
 
-  // Start Recording Audio
+  // Cleanup WS on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      stopSpeech();
+    };
+  }, []);
+
+  // ── WebSocket Connection ──────────────────────────────────────────────────
+  const connectWebSocket = useCallback(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !id) return;
+
+    setWsConnecting(true);
+    const wsBase = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/^http/, 'ws');
+    const wsUrl = `${wsBase}/ws/interview/${id}?token=${token}`;
+    console.log('Connecting WebSocket:', wsUrl);
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('WS connected');
+      setWsConnected(true);
+      setWsConnecting(false);
+      setWsMode(true);
+      // Request first question
+      ws.send(JSON.stringify({ type: 'start' }));
+      setAiThinking(true);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        handleWsMessage(msg);
+      } catch (e) {
+        console.error('WS message parse error:', e);
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log('WS closed:', event.code, event.reason);
+      setWsConnected(false);
+      setWsConnecting(false);
+      if (event.code !== 1000 && event.code !== 4001) {
+        // Unexpected close — fall back to REST mode
+        setAiError('Live connection lost. Switched to standard mode.');
+        setTimeout(() => setAiError(null), 5000);
+        setWsMode(false);
+        fetchSession();
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error('WS error:', err);
+      setWsConnecting(false);
+      setAiError('WebSocket connection failed. Using standard mode.');
+      setTimeout(() => setAiError(null), 5000);
+      setWsMode(false);
+      fetchSession();
+    };
+  }, [id]);
+
+  const handleWsMessage = useCallback((msg) => {
+    const type = msg.type;
+
+    if (type === 'thinking') {
+      setAiThinking(true);
+      return;
+    }
+
+    if (type === 'question') {
+      setAiThinking(false);
+      setCurrentGrading(null);
+      setBrowserTranscript('');
+      setLiveTranscript('');
+      setTypedAnswer('');
+      setIsTypingMode(false);
+
+      const qData = {
+        question: msg.question,
+        question_number: msg.question_number,
+        stage: msg.stage,
+        difficulty: msg.difficulty,
+        question_type: msg.question_type || 'counter_question',
+        current_topic: msg.current_topic || '',
+        is_last: msg.is_last || false,
+      };
+      setDynamicQuestion(qData);
+
+      // TTS — AI speaks the question
+      if (ttsEnabled) {
+        setAiSpeaking(true);
+        const utter = speakText(msg.tts_text || msg.question);
+        if (utter) {
+          utter.onend = () => setAiSpeaking(false);
+          utter.onerror = () => setAiSpeaking(false);
+        } else {
+          setAiSpeaking(false);
+        }
+      }
+      return;
+    }
+
+    if (type === 'feedback') {
+      setAiThinking(false);
+      const fbData = {
+        score: msg.score,
+        feedback: msg.feedback,
+        strengths: msg.strengths,
+        improvements: msg.improvements,
+        answer_text: msg.answer_text,
+        evaluation: msg.evaluation,
+        candidate_behavior: msg.candidate_behavior,
+      };
+      setCurrentGrading(fbData);
+      setLastFeedback(fbData);
+      // Add to conversation log
+      setConversationLog(prev => [...prev, {
+        question: dynamicQuestion?.question || '',
+        answer: msg.answer_text || '',
+        score: msg.score,
+        feedback: msg.feedback,
+        strengths: msg.strengths,
+        improvements: msg.improvements,
+        q_number: msg.question_number,
+      }]);
+      return;
+    }
+
+    if (type === 'complete') {
+      setAiThinking(false);
+      stopSpeech();
+      if (msg.redirect_url) {
+        setTimeout(() => navigate(msg.redirect_url), 1500);
+      }
+      return;
+    }
+
+    if (type === 'error') {
+      setAiThinking(false);
+      setAiError(msg.message || 'An error occurred.');
+      setTimeout(() => setAiError(null), 6000);
+      return;
+    }
+  }, [ttsEnabled, dynamicQuestion, navigate]);
+
+  // Update ws message handler when ttsEnabled or dynamicQuestion changes
+  useEffect(() => {
+    if (wsRef.current) {
+      wsRef.current.onmessage = (event) => {
+        try { handleWsMessage(JSON.parse(event.data)); }
+        catch (e) { console.error('WS parse err:', e); }
+      };
+    }
+  }, [handleWsMessage]);
+
+  const sendWsAnswer = useCallback((answerText, emotionSummary, eyeContactScore) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setAiError('Connection lost. Please refresh.');
+      return;
+    }
+    wsRef.current.send(JSON.stringify({
+      type: 'answer',
+      text: answerText,
+      emotion: emotionSummary,
+      eye_contact: eyeContactScore,
+    }));
+    setAiThinking(true);
+    setCurrentGrading(null);
+  }, []);
+
+  const endWsInterview = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'end' }));
+      setAiThinking(true);
+    }
+  }, []);
+
+  // Auto-connect WebSocket once when session is loaded and ready
+  useEffect(() => {
+    if (id && id !== 'new' && !loading && interview && !wsAttemptedRef.current) {
+      wsAttemptedRef.current = true;
+      connectWebSocket();
+    }
+  }, [id, loading, interview, connectWebSocket]);
+
+  // ── Recording ────────────────────────────────────────────────────────────
   const startAnswer = async () => {
     audioChunksRef.current = [];
     setTimer(0);
     setEmotionsHistory([]);
-    setEyeContactHistory([90]); // Seed with a standard posture score
+    setEyeContactHistory([90]);
     setCurrentGrading(null);
-    
+    stopSpeech();
+    setAiSpeaking(false);
+
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Set recorder options
       let options = { mimeType: 'audio/webm' };
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        options = { mimeType: 'audio/mp4' };
-      }
-      
+      if (!MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/mp4' };
+
       const mediaRecorder = new MediaRecorder(audioStream, options);
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
-      
+
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType });
-        // Stop audio tracks
         audioStream.getTracks().forEach(track => track.stop());
-        
-        // Post response to backend
         uploadAndGradeAnswer(audioBlob);
       };
 
-      // Start Browser Speech Recognition in parallel
+      // Browser Speech Recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const rec = new SpeechRecognition();
         rec.continuous = true;
         rec.interimResults = true;
         rec.lang = 'en-US';
-
         let finalTranscript = '';
         rec.onresult = (event) => {
           let interimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript + ' ';
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
+            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + ' ';
+            else interimTranscript += event.results[i][0].transcript;
           }
           const fullTranscript = finalTranscript + interimTranscript;
           setBrowserTranscript(fullTranscript);
           setLiveTranscript(fullTranscript);
         };
-
-        rec.onerror = (e) => {
-          // Suppress non-critical errors that happen normally
-          if (['no-speech', 'aborted', 'network'].includes(e.error)) return;
-          console.warn("Speech recognition error:", e.error);
-        };
-
+        rec.onerror = (e) => { if (!['no-speech', 'aborted', 'network'].includes(e.error)) console.warn('STT error:', e.error); };
         rec.onend = () => {
-          // Auto-restart if we're still recording (browser stops recognition after silence)
           if (isRecording || mediaRecorderRef.current?.state === 'recording') {
-            try {
-              rec.start();
-            } catch (restartErr) {
-              // Already started or other issue — silently ignore
-            }
+            try { rec.start(); } catch { /* already started */ }
           }
         };
-
         recognitionRef.current = rec;
         rec.start();
       }
-      
-      mediaRecorder.start(1000); // chunk timeslice 1s
+
+      mediaRecorder.start(1000);
       setIsRecording(true);
     } catch (err) {
-      console.error("Microphone recording start failed:", err);
-      alert("Microphone permission required to submit spoken answers.");
+      console.error('Microphone start failed:', err);
+      alert('Microphone permission required to submit spoken answers.');
     }
   };
 
@@ -230,62 +437,59 @@ const InterviewRoom = () => {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    if (recognitionRef.current) recognitionRef.current.stop();
   };
 
-  // Process and Upload recorded wav/webm to backend
+  const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
   const uploadAndGradeAnswer = async (audioBlob, transcriptOverride = null) => {
     setSubmittingAnswer(true);
-    
-    // 1. Calculate Average emotions
-    const emotionSummary = {
-      neutral: 0.0, happy: 0.0, sad: 0.0, angry: 0.0, fear: 0.0, surprise: 0.0, disgust: 0.0
-    };
+
+    // Calculate average emotions
+    const emotionSummary = { neutral: 0.0, happy: 0.0, sad: 0.0, angry: 0.0, fear: 0.0, surprise: 0.0, disgust: 0.0 };
     if (emotionsHistory.length > 0) {
       emotionsHistory.forEach(frameProbs => {
         Object.keys(frameProbs).forEach(key => {
-          const lowerKey = key.toLowerCase();
-          if (emotionSummary.hasOwnProperty(lowerKey)) {
-            emotionSummary[lowerKey] += frameProbs[key];
-          }
+          const lk = key.toLowerCase();
+          if (lk in emotionSummary) emotionSummary[lk] += frameProbs[key];
         });
       });
-      // Normalize
       Object.keys(emotionSummary).forEach(key => {
         emotionSummary[key] = roundToTwo(emotionSummary[key] / emotionsHistory.length);
       });
     } else {
-      emotionSummary["neutral"] = 100.0;
+      emotionSummary.neutral = 100.0;
     }
-
-    // 2. Calculate Average eye contact
     const avgEyeScore = eyeContactHistory.length > 0
-      ? roundToTwo(eyeContactHistory.reduce((acc, curr) => acc + curr, 0) / eyeContactHistory.length)
+      ? roundToTwo(eyeContactHistory.reduce((a, c) => a + c, 0) / eyeContactHistory.length)
       : 85.0;
 
-    // 3. Assemble Multipart Form
-    const currentQ = interview.questions[currentQIndex];
+    const finalTranscript = transcriptOverride || browserTranscript;
+
+    // WebSocket mode — send answer via WS
+    if (wsMode && wsRef.current?.readyState === WebSocket.OPEN) {
+      sendWsAnswer(finalTranscript || '(No transcript — audio submitted)', emotionSummary, avgEyeScore);
+      setSubmittingAnswer(false);
+      return;
+    }
+
+    // REST mode fallback
+    const currentQ = interview?.questions?.[currentQIndex];
+    if (!currentQ) { setSubmittingAnswer(false); return; }
+
     const formData = new FormData();
     formData.append('question_id', currentQ.id);
     formData.append('eye_contact_score', avgEyeScore);
     formData.append('emotion_summary_json', JSON.stringify(emotionSummary));
     formData.append('audio', audioBlob, `q${currentQ.id}_response.webm`);
-    
-    const finalTranscript = transcriptOverride || browserTranscript;
-    if (finalTranscript && finalTranscript.trim()) {
-      formData.append('browser_transcript', finalTranscript);
-    }
+    if (finalTranscript?.trim()) formData.append('browser_transcript', finalTranscript);
 
     try {
       const res = await API.post(`/api/interviews/${id}/answer`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
       setCurrentGrading(res.data);
-      
-      // Update local interview state
+      setLastFeedback(res.data);
       const updatedQuestions = [...interview.questions];
       updatedQuestions[currentQIndex] = {
         ...updatedQuestions[currentQIndex],
@@ -293,19 +497,26 @@ const InterviewRoom = () => {
         eye_contact_score: res.data.eye_contact_score,
         emotion_summary: res.data.emotion_summary,
         voice_metrics: res.data.voice_metrics,
-        evaluation: res.data.evaluation
+        evaluation: res.data.evaluation,
       };
+      if (res.data.next_question && !updatedQuestions.some(q => q.id === currentQ.id + 1)) {
+        updatedQuestions.push({
+          id: currentQ.id + 1,
+          question_text: res.data.next_question,
+          answer_text: null,
+          emotion_summary: null,
+          eye_contact_score: null,
+          voice_metrics: null,
+          evaluation: null,
+        });
+      }
       setInterview({ ...interview, questions: updatedQuestions });
-      
     } catch (err) {
-      console.error("Grading request failed:", err);
-      const isServerError = err.response?.status >= 500;
-      const isAiError = err.response?.status === 503;
-      const msg = isAiError
+      const msg = err.response?.status === 503
         ? 'AI service temporarily unavailable. Please try again.'
-        : isServerError
-        ? 'Server error processing your answer. Please try again.'
-        : 'Network error. Check your connection and retry.';
+        : err.response?.status >= 500
+        ? 'Server error. Please try again.'
+        : 'Network error. Check your connection.';
       setAiError(msg);
       setTimeout(() => setAiError(null), 6000);
     } finally {
@@ -313,44 +524,45 @@ const InterviewRoom = () => {
     }
   };
 
-  const roundToTwo = (num) => {
-    return Math.round((num + Number.EPSILON) * 100) / 100;
-  };
-
-  const handleEmotionUpdate = (dominant, probabilities) => {
-    setEmotionsHistory(prev => [...prev, probabilities]);
-  };
-
-  const handleEyeContactUpdate = (score) => {
-    setEyeContactHistory(prev => [...prev, score]);
-  };
+  const handleEmotionUpdate = (dominant, probabilities) => setEmotionsHistory(prev => [...prev, probabilities]);
+  const handleEyeContactUpdate = (score) => setEyeContactHistory(prev => [...prev, score]);
 
   const submitTypedAnswer = () => {
     if (!typedAnswer.trim()) return;
-    // Create a mock tiny silent audio file for multipart payload compatibility
+    if (wsMode && wsRef.current?.readyState === WebSocket.OPEN) {
+      const emotionSummary = { neutral: 100.0 };
+      sendWsAnswer(typedAnswer, emotionSummary, 85.0);
+      setSubmittingAnswer(true);
+      setTypedAnswer('');
+      return;
+    }
     const silentBlob = new Blob([new Uint8Array(100)], { type: 'audio/webm' });
     uploadAndGradeAnswer(silentBlob, typedAnswer);
   };
 
+  // REST mode navigation
   const handleNextQuestion = () => {
-    if (currentQIndex < interview.questions.length - 1) {
+    if (interview && currentQIndex < interview.questions.length - 1) {
       setCurrentQIndex(currentQIndex + 1);
       setCurrentGrading(null);
-      setBrowserTranscript("");
-      setLiveTranscript("");
-      setTypedAnswer("");
+      setBrowserTranscript('');
+      setLiveTranscript('');
+      setTypedAnswer('');
       setIsTypingMode(false);
     }
   };
 
   const handleCompleteInterview = async () => {
+    if (wsMode) {
+      endWsInterview();
+      return;
+    }
     setLoading(true);
     try {
       await API.post(`/api/interviews/${id}/complete`);
       navigate(`/reports/${id}`);
     } catch (err) {
-      console.error("Failed to complete interview session:", err);
-      alert("Error completing session. Try again.");
+      alert('Error completing session. Try again.');
       setLoading(false);
     }
   };
@@ -359,27 +571,27 @@ const InterviewRoom = () => {
     e.preventDefault();
     setCreatingSession(true);
     const selectedRole = role === 'Other' ? customRole : role;
-
     try {
       const res = await API.post('/api/interviews', {
         role: selectedRole,
         experience_level: experienceLevel,
-        interview_type: interviewType
+        interview_type: interviewType,
       });
       navigate(`/interview/${res.data.id}`);
-    } catch (err) {
-      alert("Failed to start interview. Check connection/keys.");
+    } catch {
+      alert('Failed to start interview. Check connection/keys.');
     } finally {
       setCreatingSession(false);
     }
   };
 
   const formatTimer = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // ── Render: Loading ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-midnight text-white">
@@ -391,27 +603,21 @@ const InterviewRoom = () => {
     );
   }
 
+  // ── Render: New Interview Config ────────────────────────────────────────
   if (id === 'new') {
     return (
       <div className="min-h-screen flex bg-cream animate-fadeIn">
         <Sidebar />
-        
         <main className="flex-1 p-8 md:p-12 overflow-y-auto max-w-3xl">
           <div className="mb-8">
             <h1 className="font-display font-extrabold text-3xl text-midnight">Configure Mock Interview</h1>
-            <p className="text-gray-500 text-sm mt-1">Set up your practice session parameters to start a tailored AI interview.</p>
+            <p className="text-gray-500 text-sm mt-1">Set up your practice session. The AI will adapt questions based on your answers.</p>
           </div>
-
           <div className="bg-white rounded-3xl p-6 md:p-8 border border-cream-border/60 shadow-premium">
             <form onSubmit={handleStartInterview} className="flex flex-col gap-6">
-              {/* Target Role selection */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Target Job Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium"
-                >
+                <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium">
                   <option value="Software Engineer">Software Engineer (General)</option>
                   <option value="React Developer">React / Frontend Developer</option>
                   <option value="Python Developer">Python / Backend Developer</option>
@@ -419,51 +625,25 @@ const InterviewRoom = () => {
                   <option value="Other">Custom Role...</option>
                 </select>
               </div>
-
-              {/* Custom Role Field if selected other */}
               {role === 'Other' && (
                 <div className="flex flex-col gap-1.5 animate-fadeIn">
                   <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Custom Role Title</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Node.js Developer"
-                    value={customRole}
-                    onChange={(e) => setCustomRole(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium"
-                  />
+                  <input type="text" required placeholder="e.g. Node.js Developer" value={customRole} onChange={(e) => setCustomRole(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium" />
                 </div>
               )}
-
-              {/* Experience level selection */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Experience Seniority</label>
                 <div className="grid grid-cols-3 gap-3">
                   {['Entry', 'Mid', 'Senior'].map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => setExperienceLevel(level)}
-                      className={`py-3 rounded-xl text-xs font-bold border transition-all ${
-                        experienceLevel === level
-                          ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-cream-border bg-white text-gray-500 hover:bg-cream-darker/25'
-                      }`}
-                    >
+                    <button key={level} type="button" onClick={() => setExperienceLevel(level)} className={`py-3 rounded-xl text-xs font-bold border transition-all ${experienceLevel === level ? 'border-primary bg-primary/5 text-primary' : 'border-cream-border bg-white text-gray-500 hover:bg-cream-darker/25'}`}>
                       {level} Level
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Interview Type Selection */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Interview Session Format</label>
-                <select
-                  value={interviewType}
-                  onChange={(e) => setInterviewType(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium"
-                >
+                <select value={interviewType} onChange={(e) => setInterviewType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white text-midnight font-medium">
                   <option value="Technical">Technical (Coding, Systems, CS)</option>
                   <option value="HR">HR & Teamwork (Company Culture)</option>
                   <option value="Behavioral">Behavioral (STAR Method Situational)</option>
@@ -471,17 +651,10 @@ const InterviewRoom = () => {
                   <option value="Mixed">Mixed (Technical + Behavioral + HR)</option>
                 </select>
               </div>
-
-              <div className="p-4 rounded-xl bg-cream/40 border border-cream-border text-xs text-gray-500 leading-relaxed">
-                💡 <b>System Requirements:</b> You will need to allow webcam and microphone permissions. AI video analysis evaluates eye contact and emotional cues in real-time, while audio analysis transcribes and assesses your speaking characteristics.
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 text-xs text-gray-600 leading-relaxed">
+                ✨ <b>Dynamic AI Mode:</b> The AI will adapt questions based on your answers in real-time, asking deeper follow-ups when you do well and clarifying questions when needed. It also speaks the questions aloud.
               </div>
-
-              {/* Action Button */}
-              <button
-                type="submit"
-                disabled={creatingSession}
-                className="btn-primary w-full py-3.5 text-sm font-semibold shadow-glow disabled:opacity-50 mt-2"
-              >
+              <button type="submit" disabled={creatingSession} className="btn-primary w-full py-3.5 text-sm font-semibold shadow-glow disabled:opacity-50 mt-2">
                 <span>{creatingSession ? 'Creating Practice Session...' : 'Start Practice Session'}</span>
               </button>
             </form>
@@ -491,18 +664,14 @@ const InterviewRoom = () => {
     );
   }
 
-  if (!interview) {
+  if (!interview && !wsMode) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-midnight text-white text-center">
         <div className="max-w-md glass-card-dark p-8 border border-midnight-border flex flex-col items-center gap-4">
           <AlertCircle size={48} className="text-red-400" />
           <h2 className="font-display font-extrabold text-2xl">Session Error</h2>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            Could not retrieve interview session details. The session may not exist or you may not have access to it.
-          </p>
-          <Link to="/dashboard" className="btn-primary py-2.5 px-6 mt-4 w-full">
-            Return to Dashboard
-          </Link>
+          <p className="text-sm text-gray-400">Could not retrieve interview session details.</p>
+          <Link to="/dashboard" className="btn-primary py-2.5 px-6 mt-4 w-full">Return to Dashboard</Link>
         </div>
       </div>
     );
@@ -519,65 +688,44 @@ const InterviewRoom = () => {
     );
   }
 
-  // Permissions Wall
   if (!permissionsGranted) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-midnight text-white text-center">
         <div className="max-w-md glass-card-dark p-8 border border-midnight-border flex flex-col items-center gap-4">
           <AlertCircle size={48} className="text-primary-light" />
           <h2 className="font-display font-extrabold text-2xl">Hardware Access Required</h2>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            InterviewAI requires camera and microphone permissions to perform facial alignment mesh scanning and speech transcription.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="btn-primary py-2.5 px-6 mt-4 w-full"
-          >
-            Authorize Permissions
-          </button>
-          <Link to="/dashboard" className="text-xs text-gray-500 hover:text-white transition-colors underline">
-            Return to Dashboard
-          </Link>
+          <p className="text-sm text-gray-400">InterviewAI requires camera and microphone access for facial and speech analysis.</p>
+          <button onClick={() => window.location.reload()} className="btn-primary py-2.5 px-6 mt-4 w-full">Authorize Permissions</button>
+          <Link to="/dashboard" className="text-xs text-gray-500 hover:text-white transition-colors underline">Return to Dashboard</Link>
         </div>
       </div>
     );
   }
 
-  const currentQ = interview.questions[currentQIndex];
-  const hasAnsweredCurrent = currentQ.answer_text !== null;
+  // Determine current question for display
+  const currentQ = wsMode ? dynamicQuestion : (interview?.questions?.[currentQIndex]);
+  const hasAnsweredCurrent = wsMode ? !!currentGrading : (currentQ?.answer_text !== null);
+  const isLastQuestion = wsMode
+    ? (dynamicQuestion?.is_last || false)
+    : (interview && currentQIndex >= interview.questions.length - 1);
 
   return (
     <div className="min-h-screen bg-midnight text-gray-300 flex flex-col mesh-bg-dark">
-      
+
       {/* AI Error Toast */}
       {aiError && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            background: 'rgba(239,68,68,0.95)',
-            color: 'white',
-            padding: '12px 20px',
-            borderRadius: 12,
-            fontSize: 13,
-            fontWeight: 600,
-            boxShadow: '0 8px 32px rgba(239,68,68,0.4)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            maxWidth: 420,
-            animation: 'fadeIn 0.3s ease',
-          }}
-        >
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: 'rgba(239,68,68,0.95)', color: 'white',
+          padding: '12px 20px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+          boxShadow: '0 8px 32px rgba(239,68,68,0.4)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', gap: 8, maxWidth: 420,
+        }}>
           <AlertCircle size={16} />
           {aiError}
         </div>
       )}
-      
+
       {/* Header bar */}
       <header className="px-6 py-4 border-b border-midnight-border/50 flex justify-between items-center bg-midnight-light/50 backdrop-blur-md">
         <div className="flex items-center gap-4">
@@ -586,64 +734,124 @@ const InterviewRoom = () => {
           </Link>
           <div className="hidden sm:block h-4 w-0.5 bg-midnight-border/50" />
           <div className="hidden sm:flex items-center gap-2 text-xs">
-            <span className="font-bold text-white">{interview.role}</span>
-            <span className="text-gray-500">({interview.interview_type})</span>
+            <span className="font-bold text-white">{interview?.role || 'Interview'}</span>
+            <span className="text-gray-500">({interview?.interview_type || 'Dynamic'})</span>
           </div>
         </div>
 
-        {/* Progress Tracker dots */}
-        <div className="flex gap-2">
-          {interview.questions.map((q, idx) => (
-            <div 
-              key={q.id}
-              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                idx === currentQIndex 
-                  ? 'bg-primary scale-125 ring-2 ring-primary/20' 
-                  : q.answer_text !== null 
-                  ? 'bg-primary-light' 
-                  : 'bg-midnight-border'
-              }`}
-            />
-          ))}
+        <div className="flex items-center gap-3">
+          {/* WS Status */}
+          <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${wsConnected ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-gray-500/10 border-gray-500/20 text-gray-500'}`}>
+            {wsConnected ? <Wifi size={10} /> : <WifiOff size={10} />}
+            {wsConnected ? 'Live AI' : 'Standard'}
+          </div>
+
+          {/* TTS Toggle */}
+          <button
+            onClick={() => { setTtsEnabled(!ttsEnabled); stopSpeech(); setAiSpeaking(false); }}
+            className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${ttsEnabled ? 'bg-primary/10 border-primary/20 text-primary-light' : 'bg-gray-700/50 border-gray-600/30 text-gray-500'}`}
+            title="Toggle AI voice"
+          >
+            {ttsEnabled ? <Volume2 size={10} /> : <VolumeX size={10} />}
+            {ttsEnabled ? 'Voice On' : 'Voice Off'}
+          </button>
+
+          {/* Question progress (REST mode) */}
+          {!wsMode && interview && (
+            <div className="flex gap-1.5">
+              {interview.questions.map((q, idx) => (
+                <div key={q.id} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentQIndex ? 'bg-primary scale-125 ring-2 ring-primary/20' : q.answer_text !== null ? 'bg-primary-light' : 'bg-midnight-border'}`} />
+              ))}
+            </div>
+          )}
+
+          {/* Dynamic question counter */}
+          {wsMode && dynamicQuestion && (
+            <span className="text-xs text-gray-400 font-mono">
+              Q#{dynamicQuestion.question_number}
+            </span>
+          )}
         </div>
       </header>
 
-      {/* Main Panel grid layout */}
+      {/* Main Panel */}
       <div className="flex-1 flex flex-col md:flex-row p-6 md:p-8 gap-6 md:gap-8 max-w-7xl mx-auto w-full">
-        
-        {/* Left Side - Cam Feed */}
+
+        {/* Left - Camera Feed */}
         <div className="flex-1 flex flex-col gap-4">
           <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-midnight-border shadow-premium relative">
             {!loading ? (
-              <CameraPanel 
-                isRecording={isRecording} 
+              <CameraPanel
+                isRecording={isRecording}
                 onEmotionUpdate={handleEmotionUpdate}
                 onEyeContactUpdate={handleEyeContactUpdate}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-midnight">
-                <p className="text-gray-500 text-sm">Camera stopped</p>
+                <p className="text-gray-500 text-sm">Camera loading...</p>
               </div>
             )}
           </div>
-          
-          {/* Hardware instructions */}
+
+          {/* AI Speaking indicator */}
+          {aiSpeaking && (
+            <div className="glass-card-dark p-3 border border-primary/30 rounded-xl flex items-center gap-2 text-xs animate-fadeIn">
+              <div className="flex gap-0.5">
+                {[0, 1, 2, 3].map(i => (
+                  <div key={i} className="w-1 bg-primary rounded-full animate-bounce" style={{ height: 12 + (i % 2) * 4, animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </div>
+              <span className="text-primary-light font-semibold">AI Interviewer is speaking...</span>
+            </div>
+          )}
+
+          {/* Guidelines */}
           <div className="glass-card-dark p-4 border border-midnight-border/40 text-xs text-gray-500 leading-relaxed flex items-start gap-2.5">
             <HelpCircle size={16} className="text-primary-light shrink-0 mt-0.5" />
-            <div>
-              <p>💡 <b>Practice guidelines:</b> Align your face inside the bounding box guidelines. Speak at a moderate speed and keep your eyes focused near the camera to establish consistent contact ratings.</p>
-            </div>
+            <p>💡 <b>Tip:</b> Keep your face aligned in the frame. The AI adapts follow-up questions based on your answers — the better you answer, the more challenging it gets!</p>
           </div>
+
+          {/* Conversation Log (collapsible) */}
+          {wsMode && conversationLog.length > 0 && (
+            <div className="glass-card-dark border border-midnight-border/40 rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setShowLog(!showLog)}
+                className="w-full p-3 flex items-center justify-between text-xs font-bold text-gray-400 hover:text-white transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <MessageSquare size={12} className="text-primary-light" />
+                  Conversation History ({conversationLog.length} answered)
+                </span>
+                {showLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showLog && (
+                <div className="border-t border-midnight-border/30 max-h-48 overflow-y-auto p-3 flex flex-col gap-3">
+                  {conversationLog.map((entry, i) => (
+                    <div key={i} className="text-[11px] border-b border-midnight-border/20 pb-2">
+                      <p className="text-primary-light font-bold mb-0.5">Q{entry.q_number}: {entry.question.slice(0, 80)}...</p>
+                      <p className="text-gray-400 italic">{entry.answer?.slice(0, 100)}...</p>
+                      <p className="text-gray-500 mt-0.5">Score: <span className="text-white font-bold">{entry.score}/100</span></p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Right Side - Question Content */}
+        {/* Right - Question Panel */}
         <div className="w-full md:w-[420px] flex flex-col gap-6">
           <div className="glass-card-dark p-6 md:p-8 border border-midnight-border/60 flex flex-col gap-6 flex-1 justify-between shadow-premium relative">
-            
+
             {/* Header info */}
             <div>
               <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider text-primary-light mb-3">
-                <span>Question {currentQIndex + 1} of {interview.questions.length}</span>
+                <span>
+                  {wsMode
+                    ? (dynamicQuestion ? `Question ${dynamicQuestion.question_number}` : 'Connecting...')
+                    : `Question ${(currentQIndex || 0) + 1} of ${interview?.questions?.length || '?'}`
+                  }
+                </span>
                 {isRecording && (
                   <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
                     <Clock size={12} className="animate-spin" />
@@ -652,118 +860,196 @@ const InterviewRoom = () => {
                 )}
               </div>
 
+              {/* Badges: Question Type, Topic, Difficulty */}
+              <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                {/* Question Type Badge */}
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  (dynamicQuestion?.question_type === 'project_opening' || (!wsMode && currentQIndex === 0))
+                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+                    : (dynamicQuestion?.question_type === 'counter_question' || dynamicQuestion?.stage === 'counter_question')
+                    ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
+                    : (dynamicQuestion?.question_type === 'clarification')
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                    : (dynamicQuestion?.question_type === 'scenario')
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : 'bg-primary/15 border-primary/30 text-primary-light'
+                }`}>
+                  {dynamicQuestion?.question_type === 'project_opening' ? '📄 Resume Project' :
+                   dynamicQuestion?.question_type === 'counter_question' ? '🎯 Counter Question' :
+                   dynamicQuestion?.question_type === 'clarification' ? '💡 Clarification' :
+                   dynamicQuestion?.question_type === 'scenario' ? '🚀 Scenario & Scale' :
+                   dynamicQuestion?.question_type === 'follow_up' ? '🔍 Deep-Dive' :
+                   (!wsMode && currentQIndex === 0) ? '📄 Resume Project' : '🎯 Counter Question'}
+                </span>
+
+                {/* Topic badge */}
+                {(dynamicQuestion?.current_topic || interview?.current_topic) && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-midnight border border-midnight-border text-gray-300 truncate max-w-[210px]" title={dynamicQuestion?.current_topic || interview?.current_topic}>
+                    📌 {dynamicQuestion?.current_topic || interview?.current_topic}
+                  </span>
+                )}
+
+                {/* Difficulty badge */}
+                {(dynamicQuestion?.difficulty || interview?.difficulty) && dynamicQuestion?.difficulty !== 'opening' && dynamicQuestion?.difficulty !== 'closing' && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    (dynamicQuestion?.difficulty || interview?.difficulty) === 'advanced' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                    (dynamicQuestion?.difficulty || interview?.difficulty) === 'intermediate' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+                    'bg-green-500/10 border-green-500/20 text-green-400'
+                  }`}>
+                    {(dynamicQuestion?.difficulty || interview?.difficulty || 'MEDIUM').toUpperCase()}
+                  </span>
+                )}
+              </div>
+
               {/* Question Text */}
-              <h2 className="font-display font-extrabold text-lg md:text-xl text-white leading-relaxed">
-                "{currentQ.question_text}"
-              </h2>
+              {aiThinking ? (
+                <div className="flex items-center gap-2 mt-4">
+                  <Brain size={18} className="text-primary-light animate-pulse" />
+                  <span className="text-sm text-gray-400 animate-pulse">AI is analyzing answer & formulating counter-question...</span>
+                </div>
+              ) : currentQ ? (
+                <h2 className="font-display font-extrabold text-lg md:text-xl text-white leading-relaxed">
+                  "{wsMode ? dynamicQuestion?.question : currentQ?.question_text}"
+                </h2>
+              ) : (
+                <div className="text-sm text-gray-500 mt-4">Waiting for AI to connect...</div>
+              )}
             </div>
 
             {/* Answer State Controls */}
-            <div className="flex flex-col gap-4 my-6 flex-1 justify-center">
-              {submittingAnswer ? (
-                /* AI Analysis Loading Screen */
+            <div className="flex flex-col gap-4 my-4 flex-1 justify-center">
+              {/* Previous Answer Context Banner (when counter-question is ready) */}
+              {lastFeedback && !hasAnsweredCurrent && !isRecording && !submittingAnswer && (
+                <div className="p-3 bg-midnight/80 border border-midnight-border/70 rounded-xl text-xs flex flex-col gap-1.5 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-green-400" />
+                      <span>Previous Answer Analysis</span>
+                    </span>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
+                      lastFeedback.score >= 80 ? 'bg-green-500/15 text-green-400' :
+                      lastFeedback.score >= 60 ? 'bg-yellow-500/15 text-yellow-400' :
+                      'bg-red-500/15 text-red-400'
+                    }`}>
+                      {lastFeedback.score}/100
+                    </span>
+                  </div>
+                  {lastFeedback.feedback && (
+                    <p className="text-gray-300 text-[11px] leading-relaxed">
+                      💡 {lastFeedback.feedback}
+                    </p>
+                  )}
+                  {lastFeedback.improvements?.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                      <span className="text-[9px] text-yellow-400 font-semibold uppercase">Explored in next Q:</span>
+                      {lastFeedback.improvements.slice(0, 3).map((imp, idx) => (
+                        <span key={idx} className="text-[9px] bg-yellow-500/10 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-500/20">{imp}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(submittingAnswer || aiThinking && !currentGrading && !isRecording) ? (
                 <div className="flex flex-col items-center gap-3 py-10 text-center animate-fadeIn">
                   <div className="relative flex items-center justify-center">
                     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                     <Sparkles size={16} className="text-primary absolute animate-bounce" />
                   </div>
-                  <h4 className="font-display font-bold text-white text-sm mt-2">AI is Grading Your Answer</h4>
+                  <h4 className="font-display font-bold text-white text-sm mt-2">AI is Analyzing Your Answer</h4>
                   <p className="text-[11px] text-gray-500 max-w-xs leading-relaxed">
-                    Analyzing speech transcription semantic correctness, speaking rate speed, and face expression markers...
+                    Evaluating content depth, technical accuracy, and generating your counter-question...
                   </p>
                 </div>
               ) : isRecording ? (
-                /* Recording indicator HUD */
                 <div className="flex flex-col items-center gap-4 py-8 text-center bg-red-500/5 border border-red-500/15 rounded-2xl">
                   <Volume2 size={36} className="text-red-400 animate-bounce" />
                   <div>
-                    <h4 className="font-bold text-white text-sm">Voice Recording Live</h4>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Microphone active. Click submit when completed.</p>
+                    <h4 className="font-bold text-white text-sm">Recording Live</h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Click submit when done.</p>
                   </div>
                   {liveTranscript ? (
                     <div className="w-full px-4 max-h-24 overflow-y-auto mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
-                      <p className="text-[9px] text-primary-light font-bold uppercase tracking-wider mb-1">🔴 Live Transcription</p>
+                      <p className="text-[9px] text-primary-light font-bold uppercase tracking-wider mb-1">🔴 Live Transcript</p>
                       <p className="text-gray-300 italic leading-relaxed">"{liveTranscript}"</p>
                     </div>
                   ) : (
                     <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
-                      <p className="text-[9px] text-yellow-400 font-bold uppercase tracking-wider mb-1">⏺ Audio Recording Active</p>
-                      <p className="text-gray-400 leading-relaxed">Live transcription unavailable (requires internet). Your audio is still being recorded and will be transcribed when you submit.</p>
+                      <p className="text-[9px] text-yellow-400 font-bold uppercase tracking-wider mb-1">⏺ Recording</p>
+                      <p className="text-gray-400">Audio recording active. Transcript unavailable offline.</p>
                     </div>
                   )}
-                  <button
-                    onClick={stopAnswer}
-                    className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-red-500/10"
-                  >
+                  <button onClick={stopAnswer} className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-red-500/10">
                     <Square size={12} fill="white" />
                     <span>Submit Response</span>
                   </button>
                 </div>
-              ) : hasAnsweredCurrent ? (
-                /* Post-answer feedback display — transcript + semantic score + AI evaluation */
+              ) : hasAnsweredCurrent && currentGrading ? (
                 <div className="flex flex-col gap-3 p-4 rounded-xl bg-midnight border border-midnight-border text-xs leading-relaxed animate-fadeIn">
                   {/* Score row */}
                   <div className="flex items-center justify-between font-bold text-white">
-                    <span>AI Evaluation</span>
-                    <div className="flex items-center gap-2">
-                      {currentQ.evaluation?.semantic_score !== undefined && (
-                        <span className="text-[10px] bg-purple-900/40 text-purple-300 border border-purple-700/30 px-2 py-0.5 rounded-full">
-                          Semantic: {Math.round(currentQ.evaluation.semantic_score)}%
-                        </span>
-                      )}
-                      <span className="text-primary-light font-display text-sm">
-                        {currentQ.evaluation?.final_score ?? currentQ.evaluation?.score ?? 80}/100
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-primary-light" />
+                      <span>AI Evaluation</span>
+                    </span>
+                    <span className={`font-display text-sm font-bold px-2 py-0.5 rounded ${
+                      currentGrading.score >= 80 ? 'text-green-400 bg-green-500/10' :
+                      currentGrading.score >= 60 ? 'text-yellow-400 bg-yellow-500/10' :
+                      'text-red-400 bg-red-500/10'
+                    }`}>
+                      {currentGrading.score}/100
+                    </span>
                   </div>
-
-                  {/* Whisper transcript */}
-                  {currentQ.answer_text && (
+                  {/* Transcript */}
+                  {currentGrading.answer_text && (
                     <div className="bg-midnight-light/30 border border-midnight-border/40 rounded-lg p-3">
-                      <p className="text-[10px] font-bold text-primary-light uppercase tracking-wider mb-1">📝 Transcript</p>
-                      <p className="text-gray-300 italic leading-relaxed">
-                        "{(currentQ.answer_text || "").slice(0, 200)}{currentQ.answer_text?.length > 200 ? '...' : ''}"
-                      </p>
+                      <p className="text-[10px] font-bold text-primary-light uppercase tracking-wider mb-1">📝 Your Answer</p>
+                      <p className="text-gray-300 italic leading-relaxed">"{currentGrading.answer_text}"</p>
                     </div>
                   )}
-
-                  {/* Strengths */}
-                  {currentQ.evaluation?.strengths?.length > 0 && (
+                  {/* Strengths / Detected Topics */}
+                  {currentGrading.strengths?.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">✅ Strengths</p>
-                      {currentQ.evaluation.strengths.slice(0, 2).map((s, i) => (
-                        <p key={i} className="text-gray-400 leading-snug">• {s}</p>
-                      ))}
+                      <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">✅ Concepts Detected</p>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {currentGrading.strengths.map((s, i) => (
+                          <span key={i} className="text-[10px] bg-green-500/10 text-green-300 border border-green-500/20 px-2 py-0.5 rounded-full">{s}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
-
-                  {/* AI Feedback */}
-                  <p className="text-gray-500 border-t border-midnight-border/60 pt-2">
-                    💡 <b>AI Feedback:</b> {currentQ.evaluation?.feedback || 'Great answer. Click next to continue.'}
+                  {/* Improvements / Missing Concepts */}
+                  {currentGrading.improvements?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider mb-1">⚠️ Missing / To Explore</p>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {currentGrading.improvements.map((imp, i) => (
+                          <span key={i} className="text-[10px] bg-yellow-500/10 text-yellow-300 border border-yellow-500/20 px-2 py-0.5 rounded-full">{imp}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Feedback */}
+                  <p className="text-gray-300 border-t border-midnight-border/60 pt-2 text-[11px] leading-relaxed">
+                    💡 <b>Interviewer Feedback:</b> {currentGrading.feedback || 'Good answer.'}
                   </p>
                 </div>
+              ) : !wsMode && !currentQ ? (
+                <div className="text-center text-sm text-gray-500 py-8">Waiting for session to load...</div>
               ) : (
-                /* Initial state before recording / typing selection */
                 isTypingMode ? (
                   <div className="w-full flex flex-col gap-3 animate-fadeIn">
                     <textarea
                       value={typedAnswer}
                       onChange={(e) => setTypedAnswer(e.target.value)}
-                      placeholder="Type your response to the question here..."
+                      placeholder="Type your response here..."
                       className="w-full h-32 p-3 bg-midnight border border-midnight-border/60 rounded-xl text-xs text-white focus:outline-none focus:border-primary/60 resize-none leading-relaxed"
                     />
-                    <button
-                      onClick={submitTypedAnswer}
-                      disabled={!typedAnswer.trim()}
-                      className="btn-primary w-full py-3 text-xs font-semibold shadow-glow disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
+                    <button onClick={submitTypedAnswer} disabled={!typedAnswer.trim()} className="btn-primary w-full py-3 text-xs font-semibold shadow-glow disabled:opacity-40 disabled:cursor-not-allowed">
                       Submit Response
                     </button>
-                    <button
-                      onClick={() => setIsTypingMode(false)}
-                      className="text-[10px] text-gray-500 hover:text-white transition-colors underline mt-1"
-                    >
-                      Switch back to voice recording
+                    <button onClick={() => setIsTypingMode(false)} className="text-[10px] text-gray-500 hover:text-white transition-colors underline mt-1">
+                      Switch to voice
                     </button>
                   </div>
                 ) : (
@@ -771,19 +1057,13 @@ const InterviewRoom = () => {
                     <Mic size={36} className="text-primary-light" />
                     <div>
                       <h4 className="font-bold text-white text-sm">Ready to Answer?</h4>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Click the trigger below to open your microphone.</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Click below to start your microphone.</p>
                     </div>
-                    <button
-                      onClick={startAnswer}
-                      className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 text-xs font-semibold pulse-record shadow-glow"
-                    >
+                    <button onClick={startAnswer} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 text-xs font-semibold pulse-record shadow-glow">
                       <Mic size={14} />
                       <span>Begin Speaking Response</span>
                     </button>
-                    <button
-                      onClick={() => setIsTypingMode(true)}
-                      className="text-[11px] text-gray-500 hover:text-white transition-colors underline mt-2"
-                    >
+                    <button onClick={() => setIsTypingMode(true)} className="text-[11px] text-gray-500 hover:text-white transition-colors underline mt-2">
                       Type response instead
                     </button>
                   </div>
@@ -791,32 +1071,57 @@ const InterviewRoom = () => {
               )}
             </div>
 
-            {/* Navigation buttons at bottom */}
-            {hasAnsweredCurrent && !submittingAnswer && (
-              <div className="mt-auto pt-4 border-t border-midnight-border/40 flex justify-end">
-                {currentQIndex < interview.questions.length - 1 ? (
+            {/* Navigation buttons */}
+            {hasAnsweredCurrent && !submittingAnswer && !aiThinking && currentGrading && (
+              <div className="mt-auto pt-4 border-t border-midnight-border/40 flex justify-between items-center">
+                {wsMode ? (
                   <button
-                    onClick={handleNextQuestion}
-                    className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow"
+                    onClick={endWsInterview}
+                    className="text-xs text-gray-500 hover:text-red-400 transition-colors underline"
                   >
-                    <span>Next Question</span>
-                    <ArrowRight size={14} />
+                    End Interview
                   </button>
                 ) : (
-                  <button
-                    onClick={handleCompleteInterview}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-green-600/10"
-                  >
-                    <Award size={14} />
-                    <span>Finish Interview & Grade Session</span>
-                  </button>
+                  isLastQuestion ? (
+                    <span />
+                  ) : (
+                    <button onClick={handleNextQuestion} className="text-xs text-gray-500 hover:text-white transition-colors">
+                      ← Previous
+                    </button>
+                  )
+                )}
+
+                {!wsMode && (
+                  isLastQuestion ? (
+                    <button onClick={handleCompleteInterview} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow">
+                      <Award size={14} />
+                      <span>Complete & View Report</span>
+                    </button>
+                  ) : (
+                    <button onClick={handleNextQuestion} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow">
+                      <span>Next Question</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  )
+                )}
+
+                {wsMode && (
+                  <span className="text-[10px] text-gray-500">Answer submitted — AI generating next question...</span>
                 )}
               </div>
             )}
 
+            {/* WS mode: Complete button shown after last question */}
+            {wsMode && dynamicQuestion?.is_last && hasAnsweredCurrent && !submittingAnswer && !aiThinking && (
+              <div className="mt-4 pt-4 border-t border-midnight-border/40">
+                <button onClick={endWsInterview} className="bg-primary hover:bg-primary-dark text-white font-bold w-full px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-glow">
+                  <Award size={14} />
+                  <span>Complete Interview & View Report</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
-
       </div>
     </div>
   );

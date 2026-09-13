@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "interview_ai"
 
+    # ── LLM Provider ──────────────────────────────────────────────────────────
+    # Set LLM_PROVIDER=ollama to use local Ollama instead of HuggingFace remote
+    LLM_PROVIDER: str = "huggingface"  # "huggingface" | "ollama"
+
+    # ── Ollama (local LLM) ────────────────────────────────────────────────────
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:7b"       # Any model pulled in Ollama
+
     # ── Hugging Face ──────────────────────────────────────────────────────────
     # Token is read from .env only — never hardcoded in source files
     HF_TOKEN: str = ""
@@ -30,6 +38,13 @@ class Settings(BaseSettings):
     # Feature flag: when True, realistic mocks are used instead of HF API calls
     AI_MOCK_MODE: bool = False
 
+    # ── ATS / Resume ──────────────────────────────────────────────────────────
+    ATS_ENABLED: bool = True          # Toggle ATS scoring on resume upload
+
+    # ── Dynamic Interview ─────────────────────────────────────────────────────
+    # Max number of questions per dynamic interview session (0 = unlimited)
+    MAX_INTERVIEW_QUESTIONS: int = 10
+
     # Legacy OpenAI key (kept for backward compat, no longer used)
     OPENAI_API_KEY: str = ""
 
@@ -40,3 +55,4 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
