@@ -18,12 +18,18 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
   const onEyeContactUpdateRef = useRef(onEyeContactUpdate);
   const lastNotifiedScoreRef = useRef(null);
 
+  const [faceDetected, setFaceDetected] = useState(true);
+  const faceDetectedRef = useRef(faceDetected);
+  const lookingAwayRef = useRef(lookingAway);
+
   // Keep refs up-to-date
   useEffect(() => {
     isRecordingRef.current = isRecording;
     eyesOpenRef.current = eyesOpen;
+    faceDetectedRef.current = faceDetected;
+    lookingAwayRef.current = lookingAway;
     onEyeContactUpdateRef.current = onEyeContactUpdate;
-  }, [isRecording, eyesOpen, onEyeContactUpdate]);
+  }, [isRecording, eyesOpen, faceDetected, lookingAway, onEyeContactUpdate]);
 
   // Start Webcam
   const streamRef = useRef(null);
@@ -56,7 +62,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     };
   }, []);
 
-  // Canvas Scanlines & Simple Centering Eye Contact Tracker
+  // Canvas Scanlines & Tracking Visualizer
   useEffect(() => {
     let animationId;
     const canvas = canvasRef.current;
@@ -69,9 +75,20 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw standard crosshairs & tracking grids
-        ctx.strokeStyle = 'rgba(124, 58, 237, 0.4)'; // Primary purple
-        ctx.lineWidth = 1.5;
+        // Dynamic colors based on real detection
+        let primaryColor = 'rgba(124, 58, 237, 0.4)';  // Primary purple
+        let cornerColor = 'rgba(124, 58, 237, 0.85)';
+        
+        if (!faceDetectedRef.current) {
+          primaryColor = 'rgba(239, 68, 68, 0.4)';     // Red - no face
+          cornerColor = 'rgba(239, 68, 68, 0.9)';
+        } else if (lookingAwayRef.current) {
+          primaryColor = 'rgba(245, 158, 11, 0.4)';    // Amber - look away
+          cornerColor = 'rgba(245, 158, 11, 0.9)';
+        } else if (isRecordingRef.current) {
+          primaryColor = 'rgba(34, 197, 94, 0.4)';     // Green - good eye contact
+          cornerColor = 'rgba(34, 197, 94, 0.9)';
+        }
         
         // Center Target box
         const boxWidth = 240;
@@ -80,10 +97,12 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
         const boxY = (canvas.height - boxHeight) / 2;
         
         // Draw target bounding box
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
         
         // Draw corners highlight
-        ctx.strokeStyle = 'rgba(124, 58, 237, 0.85)';
+        ctx.strokeStyle = cornerColor;
         ctx.lineWidth = 3.5;
         
         // Top Left corner
@@ -115,39 +134,13 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
         ctx.stroke();
         
         // Draw vertical scanning line (slow vertical cycle)
-        const scanlineY = boxY + (Math.sin(Date.now() / 400) + 1) * (boxHeight / 2);
-        ctx.strokeStyle = 'rgba(236, 72, 153, 0.5)'; // Accent pink
+        const scanlineY = boxY + (Math.sin(Date.now() / 500) + 1) * (boxHeight / 2);
+        ctx.strokeStyle = isRecordingRef.current ? 'rgba(236, 72, 153, 0.5)' : 'rgba(124, 58, 237, 0.3)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(boxX + 5, scanlineY);
         ctx.lineTo(boxX + boxWidth - 5, scanlineY);
         ctx.stroke();
-        
-        // Simulate real-time eye-contact drift based on slight pixel diff/frame math
-        // In practice, this calculates looking away if head shifts outside box center
-        // Or if candidate is actively moving.
-        if (isRecordingRef.current) {
-          const frameDrift = Math.sin(Date.now() / 1500);
-          const isLookingAway = frameDrift > 0.85 || !eyesOpenRef.current;
-          setLookingAway(isLookingAway);
-          
-          let score = eyeContactScoreRef.current;
-          if (!eyesOpenRef.current) {
-            score = Math.max(10, score - 5.0);
-          } else if (isLookingAway) {
-            score = Math.max(45, score - 2.5);
-          } else {
-            score = Math.min(98, score + 0.8);
-          }
-          eyeContactScoreRef.current = score;
-          const finalScore = Math.round(score);
-          setEyeContactScore(finalScore);
-          
-          if (finalScore !== lastNotifiedScoreRef.current) {
-            lastNotifiedScoreRef.current = finalScore;
-            onEyeContactUpdateRef.current(finalScore);
-          }
-        }
       }
       animationId = requestAnimationFrame(drawFaceOutline);
     };
@@ -159,44 +152,88 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     };
   }, [videoRef, canvasRef]);
 
-  // Periodic Emotion Snapshot trigger (Every 3 seconds during recording)
+  // Periodic Real-Time Computer Vision Analysis (Every 1.5 seconds during recording)
   useEffect(() => {
     let intervalId;
+    let isAnalyzing = false;
+
     if (isRecording && stream) {
       intervalId = setInterval(async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 240;
-        const ctx = canvas.getContext('2d');
-        if (videoRef.current) {
+        if (isAnalyzing || !videoRef.current) return;
+        isAnalyzing = true;
+
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 320;
+          canvas.height = 240;
+          const ctx = canvas.getContext('2d');
           ctx.drawImage(videoRef.current, 0, 0, 320, 240);
-          const frameBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          
-          try {
-            const res = await API.post('/api/emotion/analyze', { frame: frameBase64 });
-            const dominant = res.data.dominant_emotion;
-            const probs = res.data.emotion_probabilities;
-            const eyesDetected = res.data.eyes_detected !== false;
-            
-            // Capitalize
-            const capDom = dominant.charAt(0).toUpperCase() + dominant.slice(1);
-            setCurrentEmotion(capDom);
-            setEyesOpen(eyesDetected);
-            onEmotionUpdate(capDom, probs);
-          } catch (err) {
-            console.error("Emotion analysis request failed:", err);
+          const frameBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+          const res = await API.post('/api/emotion/analyze', { frame: frameBase64 });
+          const dominant = res.data.dominant_emotion;
+          const probs = res.data.emotion_probabilities || {};
+          const eyesDetected = res.data.eyes_detected !== false;
+          const isFaceDetected = res.data.face_detected !== false;
+          const backendEyeScore = typeof res.data.eye_contact_score === 'number' 
+            ? res.data.eye_contact_score 
+            : (eyesDetected ? 88.0 : 40.0);
+
+          setFaceDetected(isFaceDetected);
+          setEyesOpen(eyesDetected);
+
+          if (!isFaceDetected) {
+            setCurrentEmotion('No Face');
+            setLookingAway(true);
+            const score = Math.max(10, Math.round(eyeContactScoreRef.current * 0.7));
+            eyeContactScoreRef.current = score;
+            setEyeContactScore(score);
+            if (score !== lastNotifiedScoreRef.current) {
+              lastNotifiedScoreRef.current = score;
+              onEyeContactUpdateRef.current(score);
+            }
+            return;
           }
+
+          const isAway = !eyesDetected || backendEyeScore < 65;
+          setLookingAway(isAway);
+
+          // Smoothly animate towards genuine backend eye score
+          const prevScore = eyeContactScoreRef.current;
+          const smoothedScore = Math.round(prevScore * 0.35 + backendEyeScore * 0.65);
+          eyeContactScoreRef.current = smoothedScore;
+          setEyeContactScore(smoothedScore);
+
+          if (smoothedScore !== lastNotifiedScoreRef.current) {
+            lastNotifiedScoreRef.current = smoothedScore;
+            onEyeContactUpdateRef.current(smoothedScore);
+          }
+
+          // Format clean capitalized emotion label
+          const capDom = dominant === 'no_face'
+            ? 'No Face'
+            : (dominant.charAt(0).toUpperCase() + dominant.slice(1));
+          setCurrentEmotion(capDom);
+          onEmotionUpdate(capDom, probs);
+
+        } catch (err) {
+          console.error("Emotion analysis request failed:", err);
+        } finally {
+          isAnalyzing = false;
         }
-      }, 3000);
+      }, 1500);
     } else {
       setCurrentEmotion('Neutral');
       setEyesOpen(true);
+      setFaceDetected(true);
+      setLookingAway(false);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
   }, [isRecording, stream, onEmotionUpdate]);
+
 
   return (
     <div className="w-full h-full relative rounded-2xl bg-midnight overflow-hidden border border-midnight-border flex items-center justify-center">
@@ -237,13 +274,30 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
             <span>{isRecording ? 'Session Live' : 'Camera Ready'}</span>
           </div>
 
+          {/* Real-time Tracking Status Badge (Top Right) */}
+          <div className="absolute top-4 right-4 bg-midnight/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-midnight-border text-[11px] font-medium flex items-center gap-1.5 shadow-premium">
+            {!faceDetected ? (
+              <span className="text-red-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span> Face Not Detected
+              </span>
+            ) : lookingAway ? (
+              <span className="text-amber-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Looking Away
+              </span>
+            ) : (
+              <span className="text-green-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Face Aligned & Focused
+              </span>
+            )}
+          </div>
+
           <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 text-[11px] font-semibold text-white">
             <div className="bg-midnight/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-midnight-border/60">
               Emotion: <span className="text-primary-light">{currentEmotion}</span>
             </div>
             <div className="bg-midnight/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-midnight-border/60">
-              Eye Contact: <span className={lookingAway ? "text-amber-400" : "text-green-400"}>
-                {lookingAway ? "Needs Improvement" : "Good"} ({eyeContactScore}%)
+              Eye Contact: <span className={!faceDetected ? "text-red-400" : lookingAway ? "text-amber-400" : "text-green-400"}>
+                {!faceDetected ? "No Face (0%)" : lookingAway ? `Needs Improvement (${eyeContactScore}%)` : `Optimal (${eyeContactScore}%)`}
               </span>
             </div>
           </div>

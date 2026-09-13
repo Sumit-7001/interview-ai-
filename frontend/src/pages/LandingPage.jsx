@@ -9,10 +9,18 @@ import {
   Cpu, 
   FileText, 
   Activity, 
-  LineChart,
-  ShieldCheck,
-  CheckCircle,
-  HelpCircle
+  LineChart, 
+  ShieldCheck, 
+  CheckCircle, 
+  HelpCircle, 
+  Bot, 
+  AudioLines, 
+  ScanFace, 
+  Sparkles,
+  Wifi,
+  Volume2,
+  Rocket,
+  Lock
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -216,53 +224,273 @@ const LandingPage = () => {
           </a>
         </div>
 
-        {/* Badges bar */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-12 text-xs font-medium text-gray-500">
-          <span className="bg-white/80 border border-cream-border px-3 py-1.5 rounded-xl shadow-glass">🤖 AI Powered</span>
-          <span className="bg-white/80 border border-cream-border px-3 py-1.5 rounded-xl shadow-glass">🎙️ Voice Analytics</span>
-          <span className="bg-white/80 border border-cream-border px-3 py-1.5 rounded-xl shadow-glass">👁️ Eye Contact Tracker</span>
-          <span className="bg-white/80 border border-cream-border px-3 py-1.5 rounded-xl shadow-glass">📄 Resume Customization</span>
-        </div>
+        {/* Core Intelligence Capabilities Ribbon */}
+        <div className="mt-14 w-full max-w-5xl animate-fadeIn">
+          {/* Subtle separator label */}
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <span className="h-px w-12 bg-gradient-to-r from-transparent to-cream-border"></span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-primary" />
+              Real-Time Evaluation Engine
+            </span>
+            <span className="h-px w-12 bg-gradient-to-l from-transparent to-cream-border"></span>
+          </div>
 
-        {/* Mock Interface Dashboard Preview */}
-        <div className="mt-16 w-full max-w-4xl border border-cream-border/60 rounded-2xl shadow-premium overflow-hidden bg-midnight p-1.5">
-          <div className="bg-midnight-light rounded-xl overflow-hidden aspect-video relative flex flex-col md:flex-row border border-midnight-border">
-            {/* Camera feed mockup */}
-            <div className="flex-1 bg-midnight relative flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-midnight-border">
-              <div className="w-full h-full rounded-lg bg-gray-900 border border-midnight-border/50 flex flex-col items-center justify-center relative overflow-hidden">
-                <Video size={48} className="text-primary/40 animate-pulse" />
-                <div className="absolute top-4 left-4 bg-midnight/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-midnight-border text-[11px] text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
-                  <span>Camera Active</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            
+            {/* 1. Dynamic AI Engine */}
+            <div className="group relative bg-white/85 hover:bg-white backdrop-blur-xl border border-cream-border/80 hover:border-primary/50 rounded-2xl p-3.5 px-4 shadow-glass hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex items-center gap-3.5 text-left">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/15 via-purple-500/10 to-transparent text-primary border border-primary/20 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:shadow-glow transition-all">
+                <Bot size={22} className="text-primary" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display font-bold text-xs text-midnight tracking-tight group-hover:text-primary transition-colors">
+                    AI Dynamic Panel
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 </div>
-                <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 text-[11px]">
-                  <span className="bg-primary/90 text-white px-2.5 py-1 rounded-lg">Eye Contact: 89% (Good)</span>
-                  <span className="bg-accent-pink/90 text-white px-2.5 py-1 rounded-lg">Emotion: Neutral</span>
-                </div>
+                <span className="text-[11px] text-gray-500 font-medium truncate">
+                  Adaptive Counter-Qs
+                </span>
               </div>
             </div>
-            {/* Panel mockup */}
-            <div className="w-full md:w-80 p-6 flex flex-col gap-4 text-left text-gray-300">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-primary font-bold">Question 02 of 05</span>
-                <span className="text-gray-500">Timer: 00:45</span>
+
+            {/* 2. Voice Analytics */}
+            <div className="group relative bg-white/85 hover:bg-white backdrop-blur-xl border border-cream-border/80 hover:border-accent-pink/50 rounded-2xl p-3.5 px-4 shadow-glass hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex items-center gap-3.5 text-left">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500/15 via-rose-500/10 to-transparent text-accent-pink border border-accent-pink/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                <AudioLines size={22} className="text-accent-pink" />
               </div>
-              <p className="text-sm font-semibold text-white leading-relaxed">
-                "What is the difference between a process and a thread, and how do they share resource allocations?"
-              </p>
-              <div className="mt-auto flex flex-col gap-2">
-                <div className="bg-midnight text-[11px] p-3 rounded-lg border border-midnight-border flex flex-col gap-1">
-                  <span className="text-gray-500">Live Transcription:</span>
-                  <span className="text-gray-300 italic">"A process is an executing instance..."</span>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display font-bold text-xs text-midnight tracking-tight group-hover:text-accent-pink transition-colors">
+                    Voice & Speech AI
+                  </span>
+                  <span className="text-[9px] font-semibold bg-accent-pink/10 text-accent-pink px-1.5 py-0.5 rounded-md">
+                    Whisper
+                  </span>
                 </div>
-                <button className="bg-primary/20 text-primary border border-primary/30 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                  <span>Recording Answer...</span>
-                </button>
+                <span className="text-[11px] text-gray-500 font-medium truncate">
+                  Pace, Tone & Clarity
+                </span>
               </div>
             </div>
+
+            {/* 3. Eye & Gaze Tracker */}
+            <div className="group relative bg-white/85 hover:bg-white backdrop-blur-xl border border-cream-border/80 hover:border-emerald-500/50 rounded-2xl p-3.5 px-4 shadow-glass hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex items-center gap-3.5 text-left">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent text-emerald-600 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                <ScanFace size={22} className="text-emerald-600" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display font-bold text-xs text-midnight tracking-tight group-hover:text-emerald-600 transition-colors">
+                    Face & Eye Tracker
+                  </span>
+                  <span className="text-[9px] font-semibold bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded-md">
+                    FERPlus
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-500 font-medium truncate">
+                  100% Real-Time CV
+                </span>
+              </div>
+            </div>
+
+            {/* 4. Resume Customization */}
+            <div className="group relative bg-white/85 hover:bg-white backdrop-blur-xl border border-cream-border/80 hover:border-amber-500/50 rounded-2xl p-3.5 px-4 shadow-glass hover:shadow-premium hover:-translate-y-1 transition-all duration-300 flex items-center gap-3.5 text-left">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent text-amber-600 border border-amber-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                <FileText size={22} className="text-amber-600" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display font-bold text-xs text-midnight tracking-tight group-hover:text-amber-600 transition-colors">
+                    Resume Intelligence
+                  </span>
+                  <span className="text-[9px] font-semibold bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-md">
+                    Tailored
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-500 font-medium truncate">
+                  Personalized Projects
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        {/* Real Live Interview Interface Showcase Preview */}
+        <div className="mt-16 w-full max-w-5xl rounded-3xl p-2 md:p-3 bg-midnight/95 border border-midnight-border shadow-2xl relative group">
+          {/* Subtle Outer Ambient Glow */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent-pink/15 to-emerald-500/20 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition duration-1000 -z-10" />
+
+          {/* Browser / App Header Titlebar */}
+          <div className="px-4 py-2.5 bg-midnight-light/80 border-b border-midnight-border/70 rounded-t-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/50" />
+              <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/50" />
+              <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/50" />
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-midnight border border-midnight-border text-[11px] text-gray-400 font-mono">
+              <Lock size={10} className="text-primary-light" />
+              <span>interviewai.app/interview/live-session</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline font-mono">Live Session 120 FPS</span>
+            </div>
+          </div>
+
+          {/* Real Interview Room Header */}
+          <div className="px-5 py-3.5 border-b border-midnight-border/50 flex flex-wrap justify-between items-center bg-midnight/60 backdrop-blur-md gap-3">
+            <div className="flex items-center gap-3">
+              <div className="text-xs font-semibold text-gray-300 bg-midnight border border-midnight-border px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                <span>← Exit Room</span>
+              </div>
+              <div className="h-4 w-px bg-midnight-border/80" />
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="font-bold text-white">Software Engineer</span>
+                <span className="text-gray-500">(Technical)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border bg-green-500/10 border-green-500/20 text-green-400">
+                <Wifi size={10} />
+                <span>Live AI</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border bg-primary/10 border-primary/20 text-primary-light">
+                <Volume2 size={10} />
+                <span>Voice On</span>
+              </div>
+              <span className="text-xs text-gray-400 font-mono font-semibold">Q#2</span>
+            </div>
+          </div>
+
+          {/* Main Interview Body (Two Columns: Camera on Left, Question Panel on Right) */}
+          <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 bg-midnight rounded-b-2xl">
+            
+            {/* LEFT: Camera Feed Panel + Tip */}
+            <div className="lg:col-span-7 flex flex-col gap-3.5">
+              {/* Webcam Container */}
+              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-midnight-border relative shadow-premium flex items-center justify-center">
+                {/* Real Candidate Webcam Photo */}
+                <img 
+                  src="/mock_webcam_feed.jpg" 
+                  alt="Candidate webcam feed"
+                  className="w-full h-full object-cover transform -scale-x-100"
+                />
+                
+                {/* Crosshair Target Scan Overlay */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="w-52 h-60 border border-primary/40 rounded-lg relative">
+                    {/* Corners */}
+                    <div className="absolute -top-1 -left-1 w-5 h-5 border-t-2 border-l-2 border-primary-light" />
+                    <div className="absolute -top-1 -right-1 w-5 h-5 border-t-2 border-r-2 border-primary-light" />
+                    <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-2 border-l-2 border-primary-light" />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-2 border-r-2 border-primary-light" />
+                    
+                    {/* Animated vertical scan line */}
+                    <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-accent-pink to-transparent animate-pulse absolute top-1/2 -translate-y-1/2 opacity-70" />
+                  </div>
+                </div>
+
+                {/* Top Left HUD */}
+                <div className="absolute top-3.5 left-3.5 bg-midnight/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-midnight-border text-[11px] text-white flex items-center gap-1.5 shadow-premium">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+                  <span className="font-medium">Camera Ready</span>
+                </div>
+
+                {/* Top Right HUD */}
+                <div className="absolute top-3.5 right-3.5 bg-midnight/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-midnight-border text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 shadow-premium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Face Aligned & Focused</span>
+                </div>
+
+                {/* Bottom Left HUD */}
+                <div className="absolute bottom-3.5 left-3.5 flex flex-col gap-1.5 text-[11px] font-semibold text-white">
+                  <div className="bg-midnight/80 backdrop-blur-md px-3 py-1 rounded-lg border border-midnight-border/70">
+                    Emotion: <span className="text-primary-light">Neutral</span>
+                  </div>
+                  <div className="bg-midnight/80 backdrop-blur-md px-3 py-1 rounded-lg border border-midnight-border/70">
+                    Eye Contact: <span className="text-green-400">Optimal (90%)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Tip Banner */}
+              <div className="glass-card-dark p-3.5 px-4 border border-midnight-border/60 text-xs text-gray-400 leading-relaxed flex items-start gap-2.5 rounded-xl text-left">
+                <HelpCircle size={16} className="text-primary-light shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-gray-300">💡 Tip:</strong> Keep your face aligned in the frame. The AI adapts follow-up questions based on your answers — the better you answer, the more challenging it gets!
+                </span>
+              </div>
+            </div>
+
+            {/* RIGHT: Dynamic Question Card & Audio Answer Panel */}
+            <div className="lg:col-span-5 glass-card-dark p-5 md:p-6 border border-midnight-border rounded-2xl flex flex-col justify-between text-left relative overflow-hidden">
+              {/* Question Header & Tags */}
+              <div className="flex flex-col gap-3">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-primary-light">
+                  QUESTION 2
+                </span>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary-light border border-primary/25">
+                    <FileText size={11} />
+                    Resume Project
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-midnight border border-midnight-border text-gray-300">
+                    <Rocket size={11} className="text-accent-pink" />
+                    AI Chatbot using LangChain
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    EASY
+                  </span>
+                </div>
+
+                {/* Question Statement */}
+                <p className="font-display font-bold text-base md:text-lg text-white leading-relaxed mt-1">
+                  "I noticed on your resume that you built an AI Chatbot using LangChain. In simple words, can you explain what this project does and what specific parts you personally developed?"
+                </p>
+              </div>
+
+              {/* Action / Recording Section */}
+              <div className="mt-8 pt-6 border-t border-midnight-border/50 flex flex-col items-center text-center gap-3">
+                {/* Glowing Mic Icon */}
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-12 h-12 rounded-full bg-primary/20 animate-ping opacity-60" />
+                  <div className="w-12 h-12 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary-light shadow-glow">
+                    <Mic size={22} className="text-primary-light" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-white">Ready to Answer?</span>
+                  <span className="text-[11px] text-gray-400">Click below to start your microphone.</span>
+                </div>
+
+                {/* Primary CTA */}
+                <Link 
+                  to="/register"
+                  className="btn-primary w-full py-3 text-xs md:text-sm font-semibold shadow-glow flex items-center justify-center gap-2 rounded-xl mt-1"
+                >
+                  <Mic size={15} />
+                  <span>Begin Speaking Response</span>
+                </Link>
+
+                <Link 
+                  to="/register"
+                  className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors underline"
+                >
+                  Type response instead
+                </Link>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </section>
 
       {/* Features Section */}

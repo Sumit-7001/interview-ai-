@@ -329,18 +329,22 @@ async def analyze_frame(
 ):
     """Real-time endpoint called periodically during interview to detect facial expression signals."""
     try:
-        dominant, probs, eyes_detected = await analyze_emotion(payload.frame)
+        dominant, probs, eyes_detected, eye_contact_score, face_detected = await analyze_emotion(payload.frame)
         return {
             "dominant_emotion": dominant,
             "emotion_probabilities": probs,
-            "eyes_detected": eyes_detected
+            "eyes_detected": eyes_detected,
+            "eye_contact_score": eye_contact_score,
+            "face_detected": face_detected
         }
     except Exception as e:
         logger.error(f"Emotion analysis route failed: {e}")
         return {
             "dominant_emotion": "neutral",
             "emotion_probabilities": {"neutral": 100.0},
-            "eyes_detected": True
+            "eyes_detected": True,
+            "eye_contact_score": 85.0,
+            "face_detected": True
         }
 
 

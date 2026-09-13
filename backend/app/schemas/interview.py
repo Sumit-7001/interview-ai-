@@ -43,3 +43,5 @@ class EmotionResponse(BaseModel):
     dominant_emotion: str
     emotion_probabilities: Dict[str, float]
     eyes_detected: Optional[bool] = None
+    eye_contact_score: Optional[float] = None
+    face_detected: Optional[bool] = None
