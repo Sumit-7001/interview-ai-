@@ -22,7 +22,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-midnight text-gray-400 min-h-screen flex flex-col border-r border-midnight-border sticky top-0">
+    <aside className="w-64 bg-midnight text-gray-400 h-screen sticky top-0 shrink-0 flex flex-col border-r border-midnight-border z-30 overflow-y-auto self-start">
       
       {/* Brand Header */}
       <div className="p-6 border-b border-midnight-border/60">
