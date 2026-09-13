@@ -282,8 +282,9 @@ const ReportPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-1 border-y border-cream-border/30 py-3.5 text-xs text-gray-500">
                   <div className="flex items-center gap-2">
                     <Eye size={16} className="text-primary" />
-                    <span>Eye Contact: <b>{Math.round(q.eye_contact_score)}%</b></span>
+                    <span>Eye Contact: <b>{q.eye_contact_score != null ? Math.round(q.eye_contact_score) : 85}%</b></span>
                   </div>
+
                   <div className="flex items-center gap-2">
                     <Smile size={16} className="text-accent-pink" />
                     <span>Dominant Emotion: <b className="capitalize">{domEmo}</b></span>

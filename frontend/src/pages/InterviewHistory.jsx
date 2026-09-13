@@ -28,34 +28,43 @@ const InterviewHistory = () => {
   const handleDelete = async (id, e) => {
     e.preventDefault();
     if (!window.confirm("Are you sure you want to delete this session from history?")) return;
-    
-    // Local deletion simulation to clean UI
-    setInterviews(interviews.filter(i => i.id !== id));
+    try {
+      await API.delete(`/api/interviews/${id}`);
+      setInterviews(prev => prev.filter(i => i.id !== id));
+    } catch (err) {
+      console.error("Failed to delete interview session:", err);
+      alert("Failed to delete interview session from database. Please try again.");
+    }
   };
 
   // Filter & Sort logic
   const filteredInterviews = interviews
     .filter(item => {
-      const matchRole = item.role.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!item) return false;
+      const roleStr = item.role || 'Interview';
+      const matchRole = roleStr.toLowerCase().includes(searchQuery.toLowerCase());
       const matchStatus = statusFilter === 'all' || item.status === statusFilter;
       return matchRole && matchStatus;
     })
     .sort((a, b) => {
+      const dateA = new Date(a?.created_at || 0).getTime();
+      const dateB = new Date(b?.created_at || 0).getTime();
       if (sortBy === 'date_desc') {
-        return new Date(b.created_at) - new Date(a.created_at);
+        return dateB - dateA;
       } else if (sortBy === 'date_asc') {
-        return new Date(a.created_at) - new Date(b.created_at);
+        return dateA - dateB;
       } else if (sortBy === 'score_desc') {
-        const scoreA = a.overall_score !== null ? a.overall_score : -1;
-        const scoreB = b.overall_score !== null ? b.overall_score : -1;
+        const scoreA = a?.overall_score !== null && a?.overall_score !== undefined ? a.overall_score : -1;
+        const scoreB = b?.overall_score !== null && b?.overall_score !== undefined ? b.overall_score : -1;
         return scoreB - scoreA;
       } else if (sortBy === 'score_asc') {
-        const scoreA = a.overall_score !== null ? a.overall_score : 101;
-        const scoreB = b.overall_score !== null ? b.overall_score : 101;
+        const scoreA = a?.overall_score !== null && a?.overall_score !== undefined ? a.overall_score : 101;
+        const scoreB = b?.overall_score !== null && b?.overall_score !== undefined ? b.overall_score : 101;
         return scoreA - scoreB;
       }
       return 0;
     });
+
 
   if (loading) {
     return (

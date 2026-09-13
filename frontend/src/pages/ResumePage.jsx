@@ -119,9 +119,16 @@ const ResumePage = () => {
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this resume?')) return;
-    setResume(null);
-    setMessage({ text: 'Resume cleared. Upload a new one when ready.', type: 'success' });
+    try {
+      await API.delete('/api/resume');
+      setResume(null);
+      setMessage({ text: 'Resume deleted successfully. Upload a new one when ready.', type: 'success' });
+    } catch (err) {
+      console.error('Failed to delete resume:', err);
+      setMessage({ text: 'Failed to delete resume from server. Please try again.', type: 'error' });
+    }
   };
+
 
   if (loading) {
     return (

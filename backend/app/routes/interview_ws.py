@@ -413,9 +413,11 @@ async def interview_websocket(
                 )
 
                 completed_at = datetime.utcnow()
-                duration = int((completed_at - interview["created_at"]).total_seconds())
+                created_at = interview.get("created_at") or completed_at
+                duration = max(0, int((completed_at - created_at).total_seconds()))
 
                 await db["interviews"].update_one(
+
                     {"_id": ObjectId(session_id)},
                     {"$set": {
                         "status": "completed",

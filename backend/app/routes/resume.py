@@ -236,3 +236,14 @@ async def analyze_resume_ats(
     )
     
     return ats_result
+
+
+@router.delete("")
+async def delete_resume(current_user: dict = Depends(get_current_user)):
+    """Delete the current user's resume and cached structured context."""
+    db = get_database()
+    res = await db["resumes"].delete_many({"user_id": ObjectId(current_user["id"])})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="No resume found to delete.")
+    return {"message": "Resume deleted successfully."}
+

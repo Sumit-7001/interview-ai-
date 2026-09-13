@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from bson import ObjectId
 from typing import List, Optional
 from app.database import get_database
+from app.config import settings
 from app.schemas.interview import InterviewCreate, InterviewOut, QuestionOut, EmotionRequest, EmotionResponse
 from app.services.auth_service import get_current_user
 from app.ai.emotion_service import analyze_emotion
@@ -277,7 +278,8 @@ async def complete_interview(
     
     # Calculate session duration
     completed_at = datetime.utcnow()
-    duration = int((completed_at - interview["created_at"]).total_seconds())
+    created_at = interview.get("created_at") or completed_at
+    duration = max(0, int((completed_at - created_at).total_seconds()))
     
     # Persist results
     update_doc = {
@@ -432,3 +434,22 @@ async def get_next_question(
         "difficulty": followup.get("difficulty", "intermediate"),
         "topics_detected": followup.get("topics_detected", []),
     }
+
+
+@router.delete("/api/interviews/{id}")
+async def delete_interview(
+    id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an interview session and remove from history."""
+    db = get_database()
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid interview ID format.")
+    res = await db["interviews"].delete_one({
+        "_id": ObjectId(id),
+        "user_id": ObjectId(current_user["id"])
+    })
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Interview session not found.")
+    return {"message": "Interview deleted successfully.", "id": id}
+
