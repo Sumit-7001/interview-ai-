@@ -129,8 +129,12 @@ const Dashboard = () => {
 
   const handleStartInterview = async (e) => {
     e.preventDefault();
+    const selectedRole = (role === 'Other' ? customRole : role).trim();
+    if (!selectedRole) {
+      alert('Please enter the target job role.');
+      return;
+    }
     setCreatingSession(true);
-    const selectedRole = role === 'Other' ? customRole : role;
 
     try {
       const res = await API.post('/api/interviews', {

@@ -21,13 +21,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Radar,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid
+  Radar
 } from 'recharts';
 
 const ReportPage = () => {
@@ -65,6 +59,7 @@ const ReportPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to download PDF report:", err);
       alert("Error exporting PDF report. Try again.");
@@ -101,18 +96,13 @@ const ReportPage = () => {
   const breakdown = report.scores_breakdown || {};
   
   const radarData = [
-    { subject: 'Technical', score: breakdown.technical || 80 },
-    { subject: 'Communication', score: breakdown.communication || 80 },
-    { subject: 'Answer Quality', score: breakdown.answer_quality || 80 },
-    { subject: 'Confidence', score: breakdown.confidence || 80 },
-    { subject: 'Eye Contact', score: breakdown.eye_contact || 80 },
-    { subject: 'Speech Clarity', score: breakdown.speech_clarity || 80 },
+    { subject: 'Technical', score: breakdown.technical ?? 0 },
+    { subject: 'Communication', score: breakdown.communication ?? 0 },
+    { subject: 'Answer Quality', score: breakdown.answer_quality ?? 0 },
+    { subject: 'Confidence', score: breakdown.confidence ?? 0 },
+    { subject: 'Eye Contact', score: breakdown.eye_contact ?? 0 },
+    { subject: 'Speech Clarity', score: breakdown.speech_clarity ?? 0 },
   ];
-
-  const barData = Object.keys(breakdown).map(key => ({
-    name: key.replace("_", " ").title ? key.replace("_", " ").toUpperCase() : key.replace("_", " ").toUpperCase(),
-    score: breakdown[key]
-  }));
 
   const feedback = report.feedback || {};
 

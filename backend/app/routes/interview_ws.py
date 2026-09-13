@@ -246,41 +246,51 @@ async def interview_websocket(
 
             # ── ANSWER: Understand answer, evaluate & generate counter-question ──
             elif msg_type == "answer":
-                answer_text = message.get("text", "").strip()
+                raw_text = message.get("text", "").strip()
+                # Ignore placeholder strings so we don't treat them as real answers
+                placeholders = [
+                    "(no transcript — audio submitted)",
+                    "(no transcript)",
+                    "(audio was recorded but could not be transcribed. speech-to-text requires an internet connection.)",
+                    "(no answer provided)",
+                    "(transcription failed)",
+                ]
+                answer_text = "" if raw_text.lower() in placeholders else raw_text
+
                 emotion_summary = message.get("emotion", {"neutral": 100.0})
                 eye_contact_score = float(message.get("eye_contact", 85.0))
                 audio_b64 = message.get("audio_b64", "")
 
                 if not answer_text and not audio_b64:
-                    await _send(websocket, {"type": "error", "message": "Empty answer received."})
+                    await _send(websocket, {"type": "error", "message": "No answer or audio received. Please try speaking again."})
                     continue
 
-                # Transcribe audio if provided and no text
+                # Process audio if provided
                 voice_metrics = {"duration_seconds": 0, "speaking_speed": 120, "filler_words_count": 0}
-                if audio_b64 and not answer_text:
+                if audio_b64:
                     try:
                         audio_bytes = base64.b64decode(audio_b64)
                         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                             tmp.write(audio_bytes)
                             tmp_path = tmp.name
-                        answer_text = await transcribe_audio_hf(tmp_path, current_question_text)
+                        if not answer_text:
+                            answer_text = await transcribe_audio_hf(tmp_path, current_question_text)
                         voice_metrics = await analyze_voice(tmp_path)
                         os.unlink(tmp_path)
                     except Exception as e:
-                        logger.error("WS audio transcription failed: %s", e)
-                        answer_text = answer_text or "(Transcription failed)"
+                        logger.error("WS audio processing failed: %s", e)
 
-                if not answer_text:
-                    answer_text = "(No answer provided)"
+                if not answer_text or answer_text.strip() == "":
+                    answer_text = "(Candidate did not speak or audio was inaudible)"
 
                 # Signal thinking
                 await _send(websocket, {"type": "thinking"})
 
                 # Fetch active session state
                 curr_state = _session_contexts.get(context_key, session_state)
-                curr_topic = curr_state.get("current_topic", "Project")
+                curr_topic = curr_state.get("current_topic", "Project Overview")
                 curr_turns = curr_state.get("turns_on_topic", 1)
-                curr_diff = curr_state.get("difficulty", "medium")
+                curr_diff = curr_state.get("difficulty", "easy")
                 history = curr_state.get("history", [])
 
                 # Process answer with unified interview engine

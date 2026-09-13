@@ -42,13 +42,6 @@ const PublicRoute = ({ children }) => {
   return user ? <Navigate to="/dashboard" replace /> : children;
 };
 
-// Title capitalization helper injection for String proto
-if (!String.prototype.title) {
-  String.prototype.title = function () {
-    return this.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-  };
-}
-
 function App() {
   return (
     <Router>

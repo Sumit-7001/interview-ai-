@@ -28,9 +28,13 @@ const InterviewHistory = () => {
   const handleDelete = async (id, e) => {
     e.preventDefault();
     if (!window.confirm("Are you sure you want to delete this session from history?")) return;
-    
-    // Local deletion simulation to clean UI
-    setInterviews(interviews.filter(i => i.id !== id));
+
+    try {
+      await API.delete(`/api/interviews/${id}`);
+      setInterviews((current) => current.filter((interview) => interview.id !== id));
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete this session. Please try again.');
+    }
   };
 
   // Filter & Sort logic

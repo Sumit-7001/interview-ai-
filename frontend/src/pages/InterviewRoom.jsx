@@ -86,6 +86,7 @@ const InterviewRoom = () => {
   // Browser Speech Recognition
   const [browserTranscript, setBrowserTranscript] = useState('');
   const [liveTranscript, setLiveTranscript] = useState('');
+  const transcriptRef = useRef('');
   const recognitionRef = useRef(null);
 
   // Typing fallback
@@ -255,6 +256,7 @@ const InterviewRoom = () => {
     if (type === 'question') {
       setAiThinking(false);
       setCurrentGrading(null);
+      transcriptRef.current = '';
       setBrowserTranscript('');
       setLiveTranscript('');
       setTypedAnswer('');
@@ -338,16 +340,17 @@ const InterviewRoom = () => {
     }
   }, [handleWsMessage]);
 
-  const sendWsAnswer = useCallback((answerText, emotionSummary, eyeContactScore) => {
+  const sendWsAnswer = useCallback((answerText, emotionSummary, eyeContactScore, audioB64 = '') => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       setAiError('Connection lost. Please refresh.');
       return;
     }
     wsRef.current.send(JSON.stringify({
       type: 'answer',
-      text: answerText,
+      text: answerText || '',
       emotion: emotionSummary,
       eye_contact: eyeContactScore,
+      audio_b64: audioB64,
     }));
     setAiThinking(true);
     setCurrentGrading(null);
@@ -371,6 +374,9 @@ const InterviewRoom = () => {
   // ── Recording ────────────────────────────────────────────────────────────
   const startAnswer = async () => {
     audioChunksRef.current = [];
+    transcriptRef.current = '';
+    setBrowserTranscript('');
+    setLiveTranscript('');
     setTimer(0);
     setEmotionsHistory([]);
     setEyeContactHistory([90]);
@@ -393,51 +399,66 @@ const InterviewRoom = () => {
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType });
         audioStream.getTracks().forEach(track => track.stop());
-        uploadAndGradeAnswer(audioBlob);
+        const currentSpokenText = transcriptRef.current.trim();
+        uploadAndGradeAnswer(audioBlob, currentSpokenText);
       };
 
       // Browser Speech Recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        const rec = new SpeechRecognition();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = 'en-US';
-        let finalTranscript = '';
-        rec.onresult = (event) => {
-          let interimTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + ' ';
-            else interimTranscript += event.results[i][0].transcript;
+        try {
+          if (recognitionRef.current) {
+            try { recognitionRef.current.abort(); } catch {}
           }
-          const fullTranscript = finalTranscript + interimTranscript;
-          setBrowserTranscript(fullTranscript);
-          setLiveTranscript(fullTranscript);
-        };
-        rec.onerror = (e) => { if (!['no-speech', 'aborted', 'network'].includes(e.error)) console.warn('STT error:', e.error); };
-        rec.onend = () => {
-          if (isRecording || mediaRecorderRef.current?.state === 'recording') {
-            try { rec.start(); } catch { /* already started */ }
-          }
-        };
-        recognitionRef.current = rec;
-        rec.start();
+          const rec = new SpeechRecognition();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = navigator.language || 'en-IN';
+
+          rec.onresult = (event) => {
+            let fullText = '';
+            for (let i = 0; i < event.results.length; ++i) {
+              fullText += event.results[i][0].transcript + ' ';
+            }
+            const cleanText = fullText.trim();
+            transcriptRef.current = cleanText;
+            setBrowserTranscript(cleanText);
+            setLiveTranscript(cleanText);
+          };
+
+          rec.onerror = (e) => {
+            console.warn('SpeechRecognition error:', e.error);
+          };
+
+          rec.onend = () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              try { rec.start(); } catch {}
+            }
+          };
+
+          recognitionRef.current = rec;
+          rec.start();
+        } catch (e) {
+          console.warn('SpeechRecognition init failed:', e);
+        }
       }
 
-      mediaRecorder.start(1000);
+      mediaRecorder.start(500);
       setIsRecording(true);
     } catch (err) {
       console.error('Microphone start failed:', err);
-      alert('Microphone permission required to submit spoken answers.');
+      alert('Microphone permission required. Please allow microphone access in your browser to speak.');
     }
   };
 
   const stopAnswer = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    setIsRecording(false);
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
     }
-    if (recognitionRef.current) recognitionRef.current.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
   };
 
   const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
@@ -464,11 +485,25 @@ const InterviewRoom = () => {
       ? roundToTwo(eyeContactHistory.reduce((a, c) => a + c, 0) / eyeContactHistory.length)
       : 85.0;
 
-    const finalTranscript = transcriptOverride || browserTranscript;
+    const finalTranscript = (transcriptOverride !== null ? transcriptOverride : (transcriptRef.current || browserTranscript)).trim();
+
+    // Convert audioBlob to base64
+    let audioB64 = '';
+    try {
+      const buffer = await audioBlob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      audioB64 = window.btoa(binary);
+    } catch (e) {
+      console.warn('Audio base64 error:', e);
+    }
 
     // WebSocket mode — send answer via WS
     if (wsMode && wsRef.current?.readyState === WebSocket.OPEN) {
-      sendWsAnswer(finalTranscript || '(No transcript — audio submitted)', emotionSummary, avgEyeScore);
+      sendWsAnswer(finalTranscript, emotionSummary, avgEyeScore, audioB64);
       setSubmittingAnswer(false);
       return;
     }
@@ -969,14 +1004,20 @@ const InterviewRoom = () => {
                     <p className="text-[11px] text-gray-500 mt-0.5">Click submit when done.</p>
                   </div>
                   {liveTranscript ? (
-                    <div className="w-full px-4 max-h-24 overflow-y-auto mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
-                      <p className="text-[9px] text-primary-light font-bold uppercase tracking-wider mb-1">🔴 Live Transcript</p>
-                      <p className="text-gray-300 italic leading-relaxed">"{liveTranscript}"</p>
+                    <div className="w-full px-4 max-h-28 overflow-y-auto mt-2 text-left bg-midnight border border-green-500/30 rounded-lg p-3 text-xs animate-fadeIn">
+                      <p className="text-[10px] text-green-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span>Recognized Speech</span>
+                      </p>
+                      <p className="text-white font-medium italic leading-relaxed">"{liveTranscript}"</p>
                     </div>
                   ) : (
-                    <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-2 text-xs">
-                      <p className="text-[9px] text-yellow-400 font-bold uppercase tracking-wider mb-1">⏺ Recording</p>
-                      <p className="text-gray-400">Audio recording active. Transcript unavailable offline.</p>
+                    <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-3 text-xs">
+                      <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                        <span>Listening...</span>
+                      </p>
+                      <p className="text-gray-300">Speak clearly into your microphone. Your spoken words will appear here live.</p>
                     </div>
                   )}
                   <button onClick={stopAnswer} className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-red-500/10">

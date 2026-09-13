@@ -205,6 +205,15 @@ async def get_resume(current_user: dict = Depends(get_current_user)):
     return resume
 
 
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_resume(current_user: dict = Depends(get_current_user)):
+    """Remove the current user's stored resume profile."""
+    db = get_database()
+    result = await db["resumes"].delete_many({"user_id": ObjectId(current_user["id"])})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="No resume found.")
+
+
 @router.post("/analyze-ats")
 async def analyze_resume_ats(
     role: str = "Software Engineer",
