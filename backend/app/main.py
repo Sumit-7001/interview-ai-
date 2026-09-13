@@ -16,7 +16,9 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Wildcard origins are incompatible with credentialed browser requests.
+    # Use the configured Vite/deployment origins so preflight succeeds.
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -49,7 +49,70 @@ const stopSpeech = () => {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 };
 
+// Convert Web Audio API decoded AudioBuffer to standard 16kHz 16-bit Mono WAV Blob
+const audioBufferToWav = (buffer, targetSampleRate = 16000) => {
+  const numChannels = buffer.numberOfChannels;
+  const originalSampleRate = buffer.sampleRate;
+  const length = buffer.length;
+
+  let mono = new Float32Array(length);
+  if (numChannels === 1) {
+    mono = buffer.getChannelData(0);
+  } else {
+    const ch0 = buffer.getChannelData(0);
+    const ch1 = buffer.getChannelData(1);
+    for (let i = 0; i < length; i++) {
+      mono[i] = (ch0[i] + ch1[i]) / 2;
+    }
+  }
+
+  let downsampled;
+  if (originalSampleRate === targetSampleRate) {
+    downsampled = mono;
+  } else {
+    const ratio = originalSampleRate / targetSampleRate;
+    const newLength = Math.round(length / ratio);
+    downsampled = new Float32Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+      const srcIdx = Math.min(Math.round(i * ratio), length - 1);
+      downsampled[i] = mono[srcIdx];
+    }
+  }
+
+  const wavBuffer = new ArrayBuffer(44 + downsampled.length * 2);
+  const view = new DataView(wavBuffer);
+
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + downsampled.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // Mono
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, downsampled.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < downsampled.length; i++, offset += 2) {
+    const s = Math.max(-1, Math.min(1, downsampled[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+};
+
 const InterviewRoom = () => {
+
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -86,12 +149,14 @@ const InterviewRoom = () => {
   // Browser Speech Recognition
   const [browserTranscript, setBrowserTranscript] = useState('');
   const [liveTranscript, setLiveTranscript] = useState('');
+  const [speechBlocked, setSpeechBlocked] = useState(false);
   const transcriptRef = useRef('');
   const recognitionRef = useRef(null);
 
   // Typing fallback
   const [isTypingMode, setIsTypingMode] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState('');
+
 
   // ── Dynamic Interview (WebSocket) Mode ────────────────────────────────────
   const [wsMode, setWsMode] = useState(false); // true = using WebSocket
@@ -182,6 +247,18 @@ const InterviewRoom = () => {
     return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
   }, [isRecording]);
 
+  // Safety timeout: prevent UI freeze if server or network hangs
+  useEffect(() => {
+    if (!aiThinking) return;
+    const t = setTimeout(() => {
+      setAiThinking(false);
+      setSubmittingAnswer(false);
+      setAiError('AI evaluation took longer than expected. Please try submitting again or use typing mode.');
+      setTimeout(() => setAiError(null), 6000);
+    }, 25000);
+    return () => clearTimeout(t);
+  }, [aiThinking]);
+
   // Cleanup WS on unmount
   useEffect(() => {
     return () => {
@@ -189,6 +266,7 @@ const InterviewRoom = () => {
       stopSpeech();
     };
   }, []);
+
 
   // ── WebSocket Connection ──────────────────────────────────────────────────
   const connectWebSocket = useCallback(() => {
@@ -226,9 +304,11 @@ const InterviewRoom = () => {
       console.log('WS closed:', event.code, event.reason);
       setWsConnected(false);
       setWsConnecting(false);
+      setAiThinking(false);
+      setSubmittingAnswer(false);
       if (event.code !== 1000 && event.code !== 4001) {
         // Unexpected close — fall back to REST mode
-        setAiError('Live connection lost. Switched to standard mode.');
+        setAiError('Live connection interrupted. Please try submitting your answer again.');
         setTimeout(() => setAiError(null), 5000);
         setWsMode(false);
         fetchSession();
@@ -238,6 +318,8 @@ const InterviewRoom = () => {
     ws.onerror = (err) => {
       console.error('WS error:', err);
       setWsConnecting(false);
+      setAiThinking(false);
+      setSubmittingAnswer(false);
       setAiError('WebSocket connection failed. Using standard mode.');
       setTimeout(() => setAiError(null), 5000);
       setWsMode(false);
@@ -396,14 +478,30 @@ const InterviewRoom = () => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType });
         audioStream.getTracks().forEach(track => track.stop());
         const currentSpokenText = transcriptRef.current.trim();
-        uploadAndGradeAnswer(audioBlob, currentSpokenText);
+
+        // Convert audio to 16kHz mono WAV for Whisper transcription & soundfile compatibility
+        let finalWavBlob = audioBlob;
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass && arrayBuffer.byteLength > 0) {
+            const audioCtx = new AudioContextClass();
+            const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            finalWavBlob = audioBufferToWav(decodedBuffer, 16000);
+            try { audioCtx.close(); } catch {}
+          }
+        } catch (convErr) {
+          console.warn('WAV conversion fallback:', convErr);
+        }
+
+        uploadAndGradeAnswer(finalWavBlob, currentSpokenText);
       };
 
-      // Browser Speech Recognition
+      // Browser Speech Recognition (with graceful handling for Brave / blocked network)
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         try {
@@ -414,6 +512,7 @@ const InterviewRoom = () => {
           rec.continuous = true;
           rec.interimResults = true;
           rec.lang = navigator.language || 'en-IN';
+          rec.hasNetworkError = false;
 
           rec.onresult = (event) => {
             let fullText = '';
@@ -428,10 +527,14 @@ const InterviewRoom = () => {
 
           rec.onerror = (e) => {
             console.warn('SpeechRecognition error:', e.error);
+            if (e.error === 'network' || e.error === 'not-allowed') {
+              rec.hasNetworkError = true;
+              setSpeechBlocked(true);
+            }
           };
 
           rec.onend = () => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            if (!rec.hasNetworkError && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
               try { rec.start(); } catch {}
             }
           };
@@ -442,6 +545,7 @@ const InterviewRoom = () => {
           console.warn('SpeechRecognition init failed:', e);
         }
       }
+
 
       mediaRecorder.start(500);
       setIsRecording(true);
@@ -1015,15 +1119,27 @@ const InterviewRoom = () => {
                     <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-3 text-xs">
                       <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                        <span>Listening...</span>
+                        <span>{speechBlocked ? 'Recording Voice Audio (16kHz WAV)...' : 'Listening...'}</span>
                       </p>
-                      <p className="text-gray-300">Speak clearly into your microphone. Your spoken words will appear here live.</p>
+                      <p className="text-gray-300">
+                        {speechBlocked
+                          ? 'Speak clearly into your microphone. Your audio is recorded and will be transcribed by AI Whisper upon clicking Submit.'
+                          : 'Speak clearly into your microphone. Your spoken words will appear here live.'
+                        }
+                      </p>
+                    </div>
+                  )}
+                  {speechBlocked && (
+                    <div className="w-full px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-300 text-left leading-normal flex items-start gap-1.5">
+                      <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-400" />
+                      <span><b>Brave Browser Note:</b> Real-time speech preview is blocked by Brave shields, but your audio is captured and transcribed by AI Whisper on submit.</span>
                     </div>
                   )}
                   <button onClick={stopAnswer} className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-red-500/10">
                     <Square size={12} fill="white" />
                     <span>Submit Response</span>
                   </button>
+
                 </div>
               ) : hasAnsweredCurrent && currentGrading ? (
                 <div className="flex flex-col gap-3 p-4 rounded-xl bg-midnight border border-midnight-border text-xs leading-relaxed animate-fadeIn">

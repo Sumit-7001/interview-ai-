@@ -1,6 +1,5 @@
 import base64
 import logging
-import os
 import random
 import tempfile
 from typing import Dict, Any, Tuple

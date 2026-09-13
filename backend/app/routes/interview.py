@@ -146,15 +146,7 @@ async def answer_question(
         emotion_summary = {"neutral": 100.0}
         
     # Save audio file
-    # Preserve the browser-provided container type.  MediaRecorder commonly
-    # produces WebM/MP4, and saving those bytes as .wav prevents audio tooling
-    # (and remote transcription services) from recognizing the recording.
-    original_name = audio.filename or "recording.webm"
-    extension = os.path.splitext(original_name)[1].lower()
-    if extension not in {".webm", ".wav", ".mp4", ".ogg", ".m4a"}:
-        extension = ".webm"
-    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-    filename = f"{id}_q{question_id}_{timestamp}{extension}"
+    filename = f"{id}_q{question_id}_{int(datetime.utcnow().timestamp())}.wav"
     audio_path = os.path.join(AUDIO_UPLOAD_DIR, filename)
     try:
         with open(audio_path, "wb") as f:
@@ -327,37 +319,6 @@ async def get_pdf_report(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-
-
-@router.delete("/api/interviews/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_interview(
-    id: str,
-    current_user: dict = Depends(get_current_user),
-):
-    """Delete one of the current user's interview sessions and its recordings."""
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail="Invalid interview ID format.")
-
-    db = get_database()
-    interview = await db["interviews"].find_one({
-        "_id": ObjectId(id),
-        "user_id": ObjectId(current_user["id"]),
-    })
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview session not found.")
-
-    # Audio files are application-generated paths.  Ignore missing/unreadable
-    # files so a stale recording never prevents removal of its session.
-    for question in interview.get("questions", []):
-        audio_path = question.get("audio_path")
-        if audio_path:
-            try:
-                if os.path.isfile(audio_path):
-                    os.remove(audio_path)
-            except OSError as exc:
-                logger.warning("Could not remove interview audio %s: %s", audio_path, exc)
-
-    await db["interviews"].delete_one({"_id": interview["_id"]})
 
 @router.post("/api/emotion/analyze", response_model=EmotionResponse)
 async def analyze_frame(

@@ -1,6 +1,6 @@
 import os
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import List, Optional
 
 class Settings(BaseSettings):
     # Server
@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Database
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "interview_ai"
+
+    # Comma-separated browser origins permitted to call this API.
+    FRONTEND_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # ── LLM Provider ──────────────────────────────────────────────────────────
     # Set LLM_PROVIDER=ollama to use local Ollama instead of HuggingFace remote
@@ -54,5 +57,8 @@ class Settings(BaseSettings):
         )
         extra = "ignore"
 
-settings = Settings()
+    @property
+    def cors_origins(self) -> List[str]:
+        return [origin.strip() for origin in self.FRONTEND_ORIGINS.split(",") if origin.strip()]
 
+settings = Settings()

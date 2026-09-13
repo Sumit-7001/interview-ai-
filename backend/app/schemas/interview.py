@@ -25,7 +25,7 @@ class InterviewOut(BaseModel):
     experience_level: str
     interview_type: str
     status: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     questions: List[QuestionOut]
     overall_score: Optional[float] = None
