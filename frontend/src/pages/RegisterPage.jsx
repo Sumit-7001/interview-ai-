@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, AlertCircle, Video } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 
 const RegisterPage = () => {
   const [firstName, setFirstName] = useState('');
@@ -12,6 +13,7 @@ const RegisterPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const { register } = useAuth();
+  const { toast } = useAlert();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,20 +23,25 @@ const RegisterPage = () => {
     // Basic Validations
     if (password !== confirmPassword) {
       setFormError('Passwords do not match.');
+      toast.warning('Passwords do not match.', 'Validation Error');
       return;
     }
 
     if (password.length < 6) {
       setFormError('Password must be at least 6 characters long.');
+      toast.warning('Password must be at least 6 characters long.', 'Weak Password');
       return;
     }
 
     setIsSubmitting(true);
     try {
       await register(firstName, lastName, email, password);
+      toast.success('Account created successfully! Welcome to InterviewAI.', 'Registration Complete');
       navigate('/dashboard');
     } catch (err) {
-      setFormError(err.message || 'Registration failed. Please verify your details.');
+      const msg = err.message || 'Registration failed. Please verify your details.';
+      setFormError(msg);
+      toast.error(msg, 'Registration Failed');
     } finally {
       setIsSubmitting(false);
     }

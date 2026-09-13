@@ -10,9 +10,24 @@ import {
   Play
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { confirm, toast } = useAlert();
+
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: 'Sign Out?',
+      message: 'Are you sure you want to log out of your session?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning'
+    });
+    if (!ok) return;
+    logout();
+    toast.info('You have signed out successfully.', 'Session Closed');
+  };
 
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -69,7 +84,7 @@ const Sidebar = () => {
         </div>
         
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
         >
           <LogOut size={16} />

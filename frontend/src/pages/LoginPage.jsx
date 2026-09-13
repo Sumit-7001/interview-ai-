@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle, Video } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const { login } = useAuth();
+  const { toast } = useAlert();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -21,9 +23,12 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
+      toast.success('Signed in successfully. Welcome to your workspace!', 'Welcome Back');
       navigate('/dashboard');
     } catch (err) {
-      setFormError(err.message || 'Login failed. Please verify email and password.');
+      const msg = err.message || 'Login failed. Please verify email and password.';
+      setFormError(msg);
+      toast.error(msg, 'Authentication Failed');
     } finally {
       setIsSubmitting(false);
     }

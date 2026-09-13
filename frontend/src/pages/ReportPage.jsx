@@ -14,6 +14,7 @@ import {
   Smile
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { useAlert } from '../context/AlertContext';
 import API from '../services/api';
 import { 
   ResponsiveContainer,
@@ -32,6 +33,7 @@ import {
 
 const ReportPage = () => {
   const { id } = useParams();
+  const { toast } = useAlert();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -52,6 +54,7 @@ const ReportPage = () => {
 
   const handleDownloadPDF = async () => {
     setDownloading(true);
+    toast.info("Preparing your PDF interview report export...", "Exporting PDF");
     try {
       const response = await API.get(`/api/reports/${id}/pdf`, {
         responseType: 'blob'
@@ -65,9 +68,10 @@ const ReportPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success("Interview report PDF downloaded successfully!", "Download Complete");
     } catch (err) {
       console.error("Failed to download PDF report:", err);
-      alert("Error exporting PDF report. Try again.");
+      toast.error("Error exporting PDF report. Please try again.", "Export Failed");
     } finally {
       setDownloading(false);
     }

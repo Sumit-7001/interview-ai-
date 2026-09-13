@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Search, SlidersHorizontal, ArrowLeft, Trash2, Award } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { useAlert } from '../context/AlertContext';
 import API from '../services/api';
 
 const InterviewHistory = () => {
+  const { toast, confirm } = useAlert();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,13 +29,22 @@ const InterviewHistory = () => {
 
   const handleDelete = async (id, e) => {
     e.preventDefault();
-    if (!window.confirm("Are you sure you want to delete this session from history?")) return;
+    const confirmed = await confirm({
+      title: 'Delete Interview Session?',
+      message: 'This action will permanently delete this interview session, performance scores, and speech analysis. It cannot be recovered.',
+      confirmText: 'Delete Permanently',
+      cancelText: 'Keep Session',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
     try {
       await API.delete(`/api/interviews/${id}`);
       setInterviews(prev => prev.filter(i => i.id !== id));
+      toast.success("Interview session removed from history.", "Session Deleted");
     } catch (err) {
       console.error("Failed to delete interview session:", err);
-      alert("Failed to delete interview session from database. Please try again.");
+      toast.error("Failed to delete session from database. Please try again.", "Delete Failed");
     }
   };
 

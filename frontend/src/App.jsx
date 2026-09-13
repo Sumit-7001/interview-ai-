@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AlertProvider } from './context/AlertContext';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -53,24 +54,26 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Public Landing Marketing Page */}
-          <Route path="/" element={<LandingPage />} />
-          
-          {/* Public Auth Routes */}
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-          
-          {/* Protected Candidate Dashboard & Operations */}
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/resume" element={<PrivateRoute><ResumePage /></PrivateRoute>} />
-          <Route path="/history" element={<PrivateRoute><InterviewHistory /></PrivateRoute>} />
-          <Route path="/interview/:id" element={<PrivateRoute><InterviewRoom /></PrivateRoute>} />
-          <Route path="/reports/:id" element={<PrivateRoute><ReportPage /></PrivateRoute>} />
-          
-          {/* Fallback to marketing home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AlertProvider>
+          <Routes>
+            {/* Public Landing Marketing Page */}
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* Public Auth Routes */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+            
+            {/* Protected Candidate Dashboard & Operations */}
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/resume" element={<PrivateRoute><ResumePage /></PrivateRoute>} />
+            <Route path="/history" element={<PrivateRoute><InterviewHistory /></PrivateRoute>} />
+            <Route path="/interview/:id" element={<PrivateRoute><InterviewRoom /></PrivateRoute>} />
+            <Route path="/reports/:id" element={<PrivateRoute><ReportPage /></PrivateRoute>} />
+            
+            {/* Fallback to marketing home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AlertProvider>
       </AuthProvider>
     </Router>
   );

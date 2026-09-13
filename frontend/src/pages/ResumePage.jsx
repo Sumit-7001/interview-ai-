@@ -15,6 +15,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { useAlert } from '../context/AlertContext';
 import API from '../services/api';
 
 // ATS Score Ring Component
@@ -55,6 +56,7 @@ const ATSRing = ({ score }) => {
 };
 
 const ResumePage = () => {
+  const { toast, confirm } = useAlert();
   const [resume, setResume] = useState(null);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -67,7 +69,7 @@ const ResumePage = () => {
       setResume(res.data);
     } catch (err) {
       if (err.response?.status !== 404) {
-        setMessage({ text: 'Failed to retrieve resume details.', type: 'error' });
+        toast.error('Failed to retrieve resume details.', 'Network Error');
       }
     } finally {
       setLoading(false);
@@ -83,24 +85,30 @@ const ResumePage = () => {
       const selectedFile = e.target.files[0];
       const ext = selectedFile.name.split('.').pop().toLowerCase();
       if (!['pdf', 'docx', 'txt'].includes(ext)) {
+        toast.warning('Unsupported format. Please select PDF, DOCX, or TXT.', 'File Type Notice');
         setMessage({ text: 'Unsupported format. Please select PDF, DOCX, or TXT.', type: 'error' });
         setFile(null);
         return;
       }
       setFile(selectedFile);
       setMessage({ text: '', type: '' });
+      toast.info(`Selected ${selectedFile.name}. Click 'Upload & Analyze' to score ATS.`, 'File Attached');
     }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file) {
+      toast.warning('Please select a resume file first.', 'No File Selected');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('file', file);
 
     setUploading(true);
     setMessage({ text: 'Analyzing resume — extracting skills, scoring ATS compatibility...', type: '' });
+    toast.info('Extracting skills & evaluating ATS compatibility...', 'Analyzing Document');
 
     try {
       const res = await API.post('/api/resume/upload', formData, {
@@ -109,23 +117,35 @@ const ResumePage = () => {
       setResume(res.data);
       setFile(null);
       setMessage({ text: 'Resume uploaded and ATS analysis complete!', type: 'success' });
+      toast.success('Resume analyzed successfully! ATS score & targeted questions generated.', 'Analysis Complete');
     } catch (err) {
       const errMsg = err.response?.data?.detail || 'Failed to upload and parse resume.';
       setMessage({ text: errMsg, type: 'error' });
+      toast.error(errMsg, 'Upload Failed');
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this resume?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Resume Profile?',
+      message: 'This will remove your indexed skills, ATS score, and project context. You can re-upload anytime.',
+      confirmText: 'Delete Resume',
+      cancelText: 'Keep Resume',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
     try {
       await API.delete('/api/resume');
       setResume(null);
       setMessage({ text: 'Resume deleted successfully. Upload a new one when ready.', type: 'success' });
+      toast.success('Resume removed from your profile.', 'Resume Deleted');
     } catch (err) {
       console.error('Failed to delete resume:', err);
       setMessage({ text: 'Failed to delete resume from server. Please try again.', type: 'error' });
+      toast.error('Failed to delete resume from server. Please try again.', 'Error');
     }
   };
 

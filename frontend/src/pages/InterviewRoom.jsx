@@ -22,6 +22,7 @@ import {
 import API from '../services/api';
 import CameraPanel from '../components/CameraPanel';
 import Sidebar from '../components/Sidebar';
+import { useAlert } from '../context/AlertContext';
 
 // ── Text-to-Speech helper using Web Speech API ──────────────────────────────
 const speakText = (text, { rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) => {
@@ -112,7 +113,7 @@ const audioBufferToWav = (buffer, targetSampleRate = 16000) => {
 };
 
 const InterviewRoom = () => {
-
+  const { toast, confirm } = useAlert();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -551,7 +552,7 @@ const InterviewRoom = () => {
       setIsRecording(true);
     } catch (err) {
       console.error('Microphone start failed:', err);
-      alert('Microphone permission required. Please allow microphone access in your browser to speak.');
+      toast.warning('Microphone permission required. Please allow microphone access in your browser to speak.', 'Mic Access Denied');
     }
   };
 
@@ -692,6 +693,15 @@ const InterviewRoom = () => {
   };
 
   const handleCompleteInterview = async () => {
+    const confirmed = await confirm({
+      title: 'Finish Interview Session?',
+      message: 'Are you ready to submit your interview and generate your performance report with voice & emotion metrics?',
+      confirmText: 'Yes, View Report',
+      cancelText: 'Stay in Session',
+      type: 'info'
+    });
+    if (!confirmed) return;
+
     if (wsMode) {
       endWsInterview();
       return;
@@ -699,9 +709,10 @@ const InterviewRoom = () => {
     setLoading(true);
     try {
       await API.post(`/api/interviews/${id}/complete`);
+      toast.success('Compiling comprehensive score report...', 'Session Completed');
       navigate(`/reports/${id}`);
     } catch (err) {
-      alert('Error completing session. Try again.');
+      toast.error('Error completing session. Please try again.', 'Finalize Error');
       setLoading(false);
     }
   };
@@ -716,9 +727,10 @@ const InterviewRoom = () => {
         experience_level: experienceLevel,
         interview_type: interviewType,
       });
+      toast.success('AI Interviewer ready. Entering session...', 'Room Initialized');
       navigate(`/interview/${res.data.id}`);
     } catch {
-      alert('Failed to start interview. Check connection/keys.');
+      toast.error('Failed to start interview. Check connection or backend keys.', 'Launch Failed');
     } finally {
       setCreatingSession(false);
     }
