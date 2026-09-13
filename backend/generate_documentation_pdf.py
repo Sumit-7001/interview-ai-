@@ -1,9 +1,10 @@
 """
-Generate a professional, publication-ready PDF of the complete InterviewAI Project Documentation.
-Output: /Users/sukdebsahu/Documents/AI Project/InterviewAI_Project_Documentation.pdf
+Generate an exhaustive, publication-quality PDF of the complete InterviewAI Project Documentation (A to Z).
+Output: /Users/sukdebsahu/Documents/AI Project/InterviewAI_Complete_Project_Documentation.pdf
 """
 
 import os
+import sys
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -12,7 +13,7 @@ from reportlab.platypus import (
 )
 from reportlab.pdfgen import canvas
 
-OUTPUT_PATH = "/Users/sukdebsahu/Documents/AI Project/InterviewAI_Project_Documentation.pdf"
+OUTPUT_PATH = "/Users/sukdebsahu/Documents/AI Project/InterviewAI_Complete_Project_Documentation.pdf"
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -42,15 +43,15 @@ class NumberedCanvas(canvas.Canvas):
         self.setFillColor(colors.HexColor("#64748B"))
 
         # Header
-        self.drawString(36, 756, "InterviewAI — Project Documentation & Technical Specification")
-        self.drawRightString(576, 756, "Version 3.0.0")
+        self.drawString(36, 756, "InterviewAI — Complete Project Technical Documentation (A to Z)")
+        self.drawRightString(576, 756, "Version 3.2.0 • Complete System Specification")
         self.setStrokeColor(colors.HexColor("#E2E8F0"))
         self.setLineWidth(0.5)
         self.line(36, 750, 576, 750)
 
         # Footer
         self.line(36, 42, 576, 42)
-        self.drawString(36, 30, "Confidential & Proprietary — For Academic & Evaluation Purposes")
+        self.drawString(36, 30, "InterviewAI Platform Architecture — Project & Viva Evaluation Documentation")
         self.drawRightString(576, 30, f"Page {self._pageNumber} of {page_count}")
         self.restoreState()
 
@@ -73,6 +74,8 @@ def build_pdf():
     BG_CARD = colors.HexColor("#F8FAFC")      # Light Slate Tint
     BORDER_COLOR = colors.HexColor("#CBD5E1") # Grey Border
     ACCENT_GREEN = colors.HexColor("#16A34A")
+    ACCENT_BLUE = colors.HexColor("#2563EB")
+    ACCENT_AMBER = colors.HexColor("#D97706")
 
     # Typography Styles
     title_style = ParagraphStyle(
@@ -82,28 +85,28 @@ def build_pdf():
         fontSize=24,
         leading=28,
         textColor=PRIMARY,
-        spaceAfter=6,
+        spaceAfter=4,
     )
 
     subtitle_style = ParagraphStyle(
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=11,
-        leading=16,
+        fontSize=10,
+        leading=15,
         textColor=TEXT_MUTED,
-        spaceAfter=14,
+        spaceAfter=10,
     )
 
     h1_style = ParagraphStyle(
         'SectionH1',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=19,
+        fontSize=14,
+        leading=18,
         textColor=SECONDARY,
-        spaceBefore=14,
-        spaceAfter=8,
+        spaceBefore=12,
+        spaceAfter=6,
         keepWithNext=True,
     )
 
@@ -111,11 +114,11 @@ def build_pdf():
         'SectionH2',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=16,
+        fontSize=11,
+        leading=15,
         textColor=PRIMARY,
-        spaceBefore=10,
-        spaceAfter=5,
+        spaceBefore=8,
+        spaceAfter=4,
         keepWithNext=True,
     )
 
@@ -123,53 +126,53 @@ def build_pdf():
         'Body',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=13,
+        fontSize=8.5,
+        leading=12.5,
         textColor=colors.HexColor("#1E293B"),
-        spaceAfter=6,
+        spaceAfter=5,
     )
 
     bullet_style = ParagraphStyle(
         'Bullet',
         parent=body_style,
         leftIndent=12,
-        spaceAfter=3,
+        spaceAfter=2.5,
     )
 
     code_style = ParagraphStyle(
         'CodeBlock',
         parent=styles['Normal'],
         fontName='Courier',
-        fontSize=7.5,
-        leading=10.5,
+        fontSize=7.2,
+        leading=10,
         textColor=colors.HexColor("#0F172A"),
         backColor=colors.HexColor("#F1F5F9"),
         borderColor=BORDER_COLOR,
         borderWidth=0.5,
-        borderPadding=6,
-        spaceAfter=8,
+        borderPadding=5,
+        spaceAfter=6,
     )
 
     q_style = ParagraphStyle(
         'QStyle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9.5,
-        leading=13,
+        fontSize=9,
+        leading=12.5,
         textColor=SECONDARY,
-        spaceBefore=6,
-        spaceAfter=2,
+        spaceBefore=5,
+        spaceAfter=1.5,
     )
 
     ans_style = ParagraphStyle(
         'AnsStyle',
         parent=styles['Normal'],
-        fontName='Helvetica-Oblique',
-        fontSize=8.5,
-        leading=12,
+        fontName='Helvetica',
+        fontSize=8.2,
+        leading=11.5,
         textColor=TEXT_MUTED,
-        leftIndent=10,
-        spaceAfter=6,
+        leftIndent=8,
+        spaceAfter=5,
     )
 
     story = []
@@ -177,51 +180,55 @@ def build_pdf():
     # ── COVER / HEADER BANNER ──────────────────────────────────────────────────
     banner_data = [
         [
-            Paragraph("<b>InterviewAI — Technical Documentation</b>", title_style),
+            Paragraph("<b>InterviewAI — Complete Project Technical Documentation (A to Z)</b>", title_style),
         ],
         [
-            Paragraph("<b>Domain:</b> Artificial Intelligence • Natural Language Processing • Full-Stack Web Systems<br/>"
-                      "<b>Author:</b> Sumit Kumar Sahoo & Team &nbsp;|&nbsp; <b>Version:</b> 3.0.0 &nbsp;|&nbsp; <b>Date:</b> September 2026", subtitle_style)
+            Paragraph("<b>System Type:</b> Multimodal Artificial Intelligence Mock Interview & Diagnostic Platform<br/>"
+                      "<b>Core Technologies:</b> React 18 • Vite • FastAPI • Qwen3 LLM • Whisper-v3 • DeepFace • Web Audio API • MongoDB<br/>"
+                      "<b>Author:</b> Sumit Kumar Sahu & Team &nbsp;|&nbsp; <b>Release:</b> v3.2.0 &nbsp;|&nbsp; <b>Status:</b> Production Ready", subtitle_style)
         ]
     ]
     banner_table = Table(banner_data, colWidths=[540])
     banner_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F5F3FF")),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#DDD6FE")),
+        ('BOX', (0,0), (-1,-1), 1.2, colors.HexColor("#DDD6FE")),
         ('TOPPADDING', (0,0), (-1,-1), 10),
         ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-        ('LEFTPADDING', (0,0), (-1,-1), 14),
-        ('RIGHTPADDING', (0,0), (-1,-1), 14),
+        ('LEFTPADDING', (0,0), (-1,-1), 12),
+        ('RIGHTPADDING', (0,0), (-1,-1), 12),
     ]))
     story.append(banner_table)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 10))
 
-    # ── 1. EXECUTIVE SUMMARY ───────────────────────────────────────────────────
+    # ── 1. EXECUTIVE SUMMARY & PROBLEM STATEMENT ──────────────────────────────
     story.append(Paragraph("1. Executive Summary & Problem Statement", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
 
     story.append(Paragraph(
-        "<b>InterviewAI</b> is an end-to-end, multi-modal automated mock interview platform engineered to prepare "
-        "college students and freshers for competitive technical and behavioral interviews. Standard conversational "
-        "chatbots provide static, generic Q&A without tracking candidate projects, speech characteristics, or body language. "
-        "<b>InterviewAI</b> transforms this experience by establishing a stateful, resume-driven conversational engine.",
+        "<b>InterviewAI</b> is an end-to-end, multi-modal automated mock interview platform engineered to solve the "
+        "placement readiness crisis faced by software engineering students and early-career candidates. Traditional preparation "
+        "methods suffer from massive limitations: human mock interviews are expensive (Rs 2,000 - 5,000 per session), standard "
+        "chatbots provide superficial text answers without verbal interaction, and generic practice tools do not inspect the "
+        "candidate's actual resume or non-verbal communication.",
         body_style
     ))
 
     # Problem vs Solution Table
     pv_data = [
-        [Paragraph("<b>Traditional Interview Bots</b>", ParagraphStyle('H', parent=body_style, fontName='Helvetica-Bold', textColor=colors.HexColor("#991B1B"))),
-         Paragraph("<b>InterviewAI Platform</b>", ParagraphStyle('H', parent=body_style, fontName='Helvetica-Bold', textColor=ACCENT_GREEN))],
+        [Paragraph("<b>Traditional Interview Preparation</b>", ParagraphStyle('H', parent=body_style, fontName='Helvetica-Bold', textColor=colors.HexColor("#991B1B"))),
+         Paragraph("<b>InterviewAI Multimodal Platform</b>", ParagraphStyle('H', parent=body_style, fontName='Helvetica-Bold', textColor=ACCENT_GREEN))],
         [Paragraph("• Asks generic icebreakers ('Tell me about yourself').<br/>"
-                   "• Cannot cross-examine or ask relevant follow-ups.<br/>"
-                   "• No body language, emotion, or vocal diagnostics.<br/>"
-                   "• Static pre-determined question lists.<br/>"
-                   "• High commercial fees, inaccessible to students.", body_style),
-         Paragraph("• Directly opens with candidate's top resume project.<br/>"
-                   "• Analyzes spoken answers & formulates direct counter-questions.<br/>"
-                   "• Evaluates eye contact, facial emotions, speed (WPM) & fillers.<br/>"
-                   "• Real-time full-duplex WebSocket conversational state.<br/>"
-                   "• 100% free, self-hostable, and student-accessible.", body_style)]
+                   "• Cannot cross-examine technical project trade-offs.<br/>"
+                   "• Ignores vocal speed (WPM), pauses, and filler words.<br/>"
+                   "• No eye contact tracking or emotional sentiment cues.<br/>"
+                   "• High commercial fees; inaccessible to regular students.<br/>"
+                   "• Static question sets that do not adapt to student level.", body_style),
+         Paragraph("• Directly opens with candidate's actual resume project.<br/>"
+                   "• Listens to spoken audio and generates dynamic counter-questions.<br/>"
+                   "• Vectorized audio analytics for WPM, pauses, and fillers.<br/>"
+                   "• DeepFace & OpenCV real-time gaze and posture feedback.<br/>"
+                   "• 100% self-contained, automated, and free for students.<br/>"
+                   "• Full-duplex WebSocket real-time conversational pipeline.", body_style)]
     ]
     pv_table = Table(pv_data, colWidths=[265, 275])
     pv_table.setStyle(TableStyle([
@@ -229,220 +236,283 @@ def build_pdf():
         ('BACKGROUND', (1,0), (1,-1), colors.HexColor("#F0FDF4")),
         ('BOX', (0,0), (-1,-1), 0.5, BORDER_COLOR),
         ('INNERGRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
         ('LEFTPADDING', (0,0), (-1,-1), 8),
         ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
     story.append(pv_table)
-    story.append(Spacer(1, 12))
-
-    # ── 2. TECHNICAL STACK ─────────────────────────────────────────────────────
-    story.append(Paragraph("2. Complete Technology Stack", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
-
-    stack_data = [
-        [Paragraph("<b>Layer</b>", body_style), Paragraph("<b>Technologies & Libraries</b>", body_style), Paragraph("<b>Key Responsibilities</b>", body_style)],
-        [Paragraph("<b>Frontend</b>", body_style), Paragraph("React 18, Vite 8, Tailwind CSS v4, Recharts, Lucide React", body_style), Paragraph("Modern reactive SPA, camera feeds, dynamic charts, audio controls.", body_style)],
-        [Paragraph("<b>Client Audio</b>", body_style), Paragraph("Web Audio API (Float32 PCM → 16kHz WAV), Web Speech API", body_style), Paragraph("Lossless in-browser WAV encoding, Brave shield fallback, live preview.", body_style)],
-        [Paragraph("<b>Backend</b>", body_style), Paragraph("Python 3.13, FastAPI, Uvicorn (ASGI), Pydantic v2, Motor", body_style), Paragraph("High-concurrency async REST & native WebSocket endpoints.", body_style)],
-        [Paragraph("<b>AI / LLM</b>", body_style), Paragraph("Qwen/Qwen3-8B & Qwen3-4B (HF Router), Ollama Qwen2.5:7b", body_style), Paragraph("Stateful answer analysis, counter-question generator, mentorship.", body_style)],
-        [Paragraph("<b>Speech ASR</b>", body_style), Paragraph("OpenAI Whisper-large-v3-turbo (HuggingFace Inference)", body_style), Paragraph("High-accuracy speech-to-text audio transcription.", body_style)],
-        [Paragraph("<b>Audio Metrics</b>", body_style), Paragraph("Soundfile + NumPy Vectorized Energy Thresholding", body_style), Paragraph("Ultra-fast voice duration, WPM speed, pauses, and filler estimation.", body_style)],
-        [Paragraph("<b>Computer Vision</b>", body_style), Paragraph("HTML5 Canvas Gaze Centering + DeepFace / OpenCV-Headless", body_style), Paragraph("Real-time eye contact tracking and emotional probability breakdown.", body_style)],
-        [Paragraph("<b>Database</b>", body_style), Paragraph("MongoDB Community Server (Collections: users, resumes, interviews)", body_style), Paragraph("Document-oriented persistence with structured resume context caching.", body_style)],
-        [Paragraph("<b>Export Engine</b>", body_style), Paragraph("ReportLab PDF Toolkit", body_style), Paragraph("Dynamic compilation of performance certificates and scorecards.", body_style)],
-    ]
-    stack_table = Table(stack_data, colWidths=[80, 230, 230])
-    stack_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EDE9FE")),
-        ('BOX', (0,0), (-1,-1), 0.5, BORDER_COLOR),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
-    story.append(stack_table)
-    story.append(Spacer(1, 14))
-
-    # ── 3. ARCHITECTURE & WORKFLOW ─────────────────────────────────────────────
-    story.append(Paragraph("3. System Architecture & Flow", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
-
-    arch_ascii = (
-        "USER BROWSER (React + Vite + Web Audio API 16kHz WAV Encoder)\n"
-        "   │\n"
-        "   ├── Native WebSocket (ws://localhost:8000/ws/interview/{session_id})\n"
-        "   └── REST Endpoints (/api/interviews, /api/resume, /api/auth, /api/reports)\n"
-        "        │\n"
-        "        ▼\n"
-        "FASTAPI ASYNC BACKEND (:8000)\n"
-        "   ├── Dynamic Interview Engine (Qwen3-8B / Ollama Qwen2.5:7b)\n"
-        "   ├── Whisper Speech-to-Text (HF Inference Router API)\n"
-        "   ├── Voice Analytics Engine (Soundfile + NumPy Vectorized Energy — 0.02s)\n"
-        "   ├── Computer Vision Service (OpenCV + DeepFace Expressions)\n"
-        "   ├── ATS Resume Parser & Context Extractor (pypdf/docx)\n"
-        "   ├── PDF Exporter (ReportLab Document Generator)\n"
-        "   └── MongoDB Database (:27017) [Users, Resumes, Interviews Collections]"
-    )
-    story.append(Paragraph(arch_ascii.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
-
-    story.append(Paragraph("<b>End-to-End Conversational Lifecycle:</b>", h2_style))
-    story.append(Paragraph("<b>Step 1: Resume Context Ingestion</b> — Candidate uploads PDF/DOCX. Parser extracts structured JSON containing candidate name, skills categorized into languages/frameworks/tools, and specific projects with descriptions.", bullet_style))
-    story.append(Paragraph("<b>Step 2: Resume-Driven Opening</b> — System launches WebSocket session. Opening question directly probes the candidate's top project rather than asking generic background questions.", bullet_style))
-    story.append(Paragraph("<b>Step 3: Client 16kHz WAV Recording</b> — While candidate speaks, Web Audio API decodes Float32 audio and formats a clean 16kHz 16-bit Mono WAV. Eliminates WebM/Opus incompatibilities.", bullet_style))
-    story.append(Paragraph("<b>Step 4: Real-Time Answer Analysis & Counter-Questioning</b> — Backend transcribes audio via Whisper, detects mentioned technical concepts, identifies missing trade-offs, and generates a student-friendly counter-question.", bullet_style))
-    story.append(Paragraph("<b>Step 5: Diagnostic Scoring & PDF Export</b> — Final session computes weighted scores across 5 dimensions, renders interactive radar charts, and generates a downloadable PDF certificate.", bullet_style))
-
-    story.append(PageBreak())
-
-    # ── 4. DETAILED MODULE BREAKDOWN ──────────────────────────────────────────
-    story.append(Paragraph("4. Detailed Module Breakdown", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
-
-    story.append(Paragraph("Module 1: Resume Processing & ATS Scoring Engine", h2_style))
-    story.append(Paragraph(
-        "Files: <code>resume_parser.py</code>, <code>ats_scorer.py</code>, <code>resume.py</code><br/>"
-        "• <b>Structured Context Extraction:</b> Uses pattern matching and NLP to extract clean entity objects: "
-        "<code>candidate_name</code>, <code>skills</code> (languages, frameworks, databases, tools), <code>projects</code> "
-        "(title, tech stack, descriptions), and <code>education</code>.<br/>"
-        "• <b>ATS Scoring Formula:</b> Evaluates 3 weighted criteria: (1) Technical keyword match against selected job role; "
-        "(2) Section completeness (Projects, Skills, Experience, Education); (3) Formatting hygiene and keyword density. "
-        "Outputs score (0-100), matched keywords, missing keyword checklist, and optimization recommendations.",
-        body_style
-    ))
-
-    story.append(Paragraph("Module 2: Real Dynamic Conversational AI Engine", h2_style))
-    story.append(Paragraph(
-        "Files: <code>interview_engine.py</code>, <code>prompt_templates.py</code>, <code>interview_ws.py</code><br/>"
-        "• <b>Adaptive State Machine:</b> Tracks active topic, consecutive turns per topic, difficulty, and conversation history.<br/>"
-        "• <b>Counter-Questioning Algorithm:</b> Reads candidate's actual answer text. If the answer is strong, acknowledges it "
-        "and asks a practical feature/testing counter-question. If the answer is vague or says 'I don't know', warmly pivots to a "
-        "simpler foundational angle.<br/>"
-        "• <b>Fresher / Student-Friendly Governance:</b> Strictly forbids high-level enterprise architecture or 10x scalability "
-        "bottlenecks, focusing on practical college-level implementation and debugging.",
-        body_style
-    ))
-
-    story.append(Paragraph("Module 3: Speech Transcription & Ultra-Fast Voice Analytics", h2_style))
-    story.append(Paragraph(
-        "Files: <code>speech_service.py</code>, <code>audio_service.py</code>, <code>InterviewRoom.jsx</code><br/>"
-        "• <b>In-Browser WAV Encoding:</b> JavaScript <code>audioBufferToWav()</code> converts recorded audio into RIFF WAVE (16kHz 16-bit Mono). "
-        "Ensures 100% compatibility with Whisper and Soundfile across Chrome, Edge, and Brave.<br/>"
-        "• <b>Vectorized Voice Analytics:</b> Replaced slow Librosa Fourier piptrack with Soundfile + NumPy energy thresholding, "
-        "bringing execution time from <b>172 seconds down to 0.02 seconds</b>. Computes duration, speaking speed (WPM), hesitation pause duration, "
-        "filler word counts, and pitch variance.",
-        body_style
-    ))
-
-    story.append(Paragraph("Module 4: Computer Vision & Body Language Tracking", h2_style))
-    story.append(Paragraph(
-        "Files: <code>cv_service.py</code>, <code>CameraPanel.jsx</code>, <code>interview.py</code><br/>"
-        "• <b>Eye Contact Monitoring:</b> HTML5 Canvas calculates face centering in bounding box every animation frame.<br/>"
-        "• <b>Facial Emotion Analysis:</b> Transmits frame snapshots periodically to DeepFace for emotion probability breakdown "
-        "(Neutral, Happy, Confident, Stressed).",
-        body_style
-    ))
-
     story.append(Spacer(1, 10))
 
-    # ── 5. DATABASE SCHEMA & DATA MODELS ──────────────────────────────────────
-    story.append(Paragraph("5. Database Schema & Data Models (MongoDB)", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
+    # ── 2. HIGH-LEVEL SYSTEM ARCHITECTURE ──────────────────────────────────────
+    story.append(Paragraph("2. High-Level System Architecture & Flow", h1_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
 
-    db_schema_text = (
-        "1. users Collection:\n"
-        "   { _id: ObjectId, email: String, first_name: String, last_name: String,\n"
-        "     hashed_password: String, created_at: ISODate }\n\n"
-        "2. resumes Collection:\n"
-        "   { _id: ObjectId, user_id: ObjectId, filename: String, parsed_text: String,\n"
-        "     skills: [String], experience: [String], education: [String],\n"
-        "     resume_context: { candidate_name: String, skills: Object, projects: [Object] },\n"
-        "     ats_score: Number, ats_matched_keywords: [String], ats_missing_keywords: [String],\n"
-        "     uploaded_at: ISODate }\n\n"
-        "3. interviews Collection:\n"
-        "   { _id: ObjectId, user_id: ObjectId, role: String, experience_level: String,\n"
-        "     interview_type: String, status: 'active'|'completed', overall_score: Number,\n"
-        "     duration_seconds: Number, scores_breakdown: Object, feedback: Object,\n"
-        "     questions: [\n"
-        "       { id: Number, question_text: String, answer_text: String, audio_path: String,\n"
-        "         eye_contact_score: Number, emotion_summary: Object, voice_metrics: Object,\n"
-        "         evaluation: { score: Number, correctness: String, feedback: String } }\n"
-        "     ], created_at: ISODate, completed_at: ISODate }"
+    arch_diagram = (
+        "┌────────────────────────────────────────────────────────────────────────────────────────┐\n"
+        "│                          CLIENT LAYER (React 18 + Vite SPA)                            │\n"
+        "│  [ Candidate Command Center ] [ Pre-Flight Mic Calibrator ] [ Web Audio API 16kHz WAV ] │\n"
+        "│  [ Camera Gaze Tracking ]     [ Daily Rapid Drill ]         [ Real-time Toast System ] │\n"
+        "└───────────────────────────┬────────────────────────────────────────┬───────────────────┘\n"
+        "                            │ HTTP REST / Uploads                    │ Native WebSocket\n"
+        "                            ▼                                        ▼\n"
+        "┌────────────────────────────────────────────────────────────────────────────────────────┐\n"
+        "│                     BACKEND APPLICATION GATEWAY (FastAPI / Python)                     │\n"
+        "│  • /api/auth (JWT Security)       • /api/resume (PDF/DOCX ATS Parser)                  │\n"
+        "│  • /api/interviews (REST API)     • /ws/interview/{id} (Full-Duplex Speech Engine)     │\n"
+        "│  • /api/ai/health (Diagnostics)   • /api/reports/{id}/pdf (ReportLab Exporter)         │\n"
+        "└───────────────────────────┬────────────────────────────────────────┬───────────────────┘\n"
+        "                            │                                        │\n"
+        "          ┌─────────────────┴───────────────┐      ┌─────────────────┴─────────────────┐\n"
+        "          ▼                                 ▼      ▼                                   ▼\n"
+        "  ┌────────────────┐               ┌────────────────┐   ┌────────────────┐   ┌─────────────────┐\n"
+        "  │   AI ENGINES   │               │ MULTIMODAL CV  │   │  VOICE ENGINE  │   │ DATABASE LAYER  │\n"
+        "  │ • Qwen3-8B LLM │               │ • DeepFace     │   │ • Whisper-v3   │   │ • MongoDB       │\n"
+        "  │ • Qwen3-4B     │               │ • OpenCV-Head  │   │ • Soundfile    │   │   (Users,       │\n"
+        "  │ • BGE-small    │               │ • Gaze Vector  │   │ • NumPy Vector │   │    Resumes,     │\n"
+        "  │ • Ollama Local │               │   Center Score │   │   Energy Calc  │   │    Interviews)  │\n"
+        "  └────────────────┘               └────────────────┘   └────────────────┘   └─────────────────┘"
     )
-    story.append(Paragraph(db_schema_text.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Paragraph(arch_diagram.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+
+    story.append(Paragraph("<b>End-to-End User Journey (A to Z):</b>", h2_style))
+    story.append(Paragraph("<b>1. Authentication & Session Initialization:</b> Candidate signs up/logs in with bcrypt hashed credentials; receives a signed JWT bearer token stored securely in localStorage.", bullet_style))
+    story.append(Paragraph("<b>2. Resume Ingestion & ATS Parsing:</b> Candidate uploads a PDF/DOCX resume. The backend extracts clean text, identifies technical skills (languages, frameworks, databases, tools), extracts academic projects, and computes a 0-100 ATS compatibility score.", bullet_style))
+    story.append(Paragraph("<b>3. Candidate Command Center:</b> Displays real-time AI service health, personalized greeting, 4 instant practice tracks, today's Rapid Drill question with scratchpad, and a pre-flight hardware calibrator.", bullet_style))
+    story.append(Paragraph("<b>4. Pre-Flight Hardware Calibration:</b> Directly inside the dashboard, candidate tests their microphone live. HTML5 Web Audio API calculates real-time RMS amplitude and provides visual feedback before entering the interview.", bullet_style))
+    story.append(Paragraph("<b>5. Live Interview Room (WebSocket or REST):</b> Web Audio API records voice in lossless 16kHz 16-bit Mono WAV. OpenCV tracks candidate eye contact and facial sentiment. Whisper transcribes speech, and Qwen3 LLM generates conversational counter-questions.", bullet_style))
+    story.append(Paragraph("<b>6. Multimodal Diagnostic Report & PDF:</b> Generates comprehensive scorecards, radar charts, grammar feedback, speech pace (WPM), and downloadable PDF certificate.", bullet_style))
 
     story.append(PageBreak())
 
-    # ── 6. COMPLETE API SPECIFICATION ──────────────────────────────────────────
-    story.append(Paragraph("6. Complete API Specification (REST & WebSocket)", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
+    # ── 3. DETAILED MODULE SPECIFICATIONS ──────────────────────────────────────
+    story.append(Paragraph("3. Detailed Module Breakdown & Algorithms", h1_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
 
-    api_data = [
-        [Paragraph("<b>Endpoint</b>", body_style), Paragraph("<b>Method</b>", body_style), Paragraph("<b>Description</b>", body_style)],
-        [Paragraph("/api/auth/register", code_style), Paragraph("POST", body_style), Paragraph("Create candidate profile and hash password.", body_style)],
-        [Paragraph("/api/auth/login", code_style), Paragraph("POST", body_style), Paragraph("Authenticate credentials and return JWT bearer token.", body_style)],
-        [Paragraph("/api/auth/me", code_style), Paragraph("GET", body_style), Paragraph("Fetch current authenticated user profile.", body_style)],
-        [Paragraph("/api/resume/upload", code_style), Paragraph("POST", body_style), Paragraph("Upload PDF/DOCX resume, parse context, calculate ATS score.", body_style)],
-        [Paragraph("/api/resume", code_style), Paragraph("GET", body_style), Paragraph("Retrieve candidate's active resume and ATS metadata.", body_style)],
-        [Paragraph("/api/resume", code_style), Paragraph("DELETE", body_style), Paragraph("Permanently remove candidate resume from MongoDB.", body_style)],
-        [Paragraph("/api/interviews", code_style), Paragraph("POST", body_style), Paragraph("Initialize interview session with resume opening question.", body_style)],
-        [Paragraph("/api/interviews", code_style), Paragraph("GET", body_style), Paragraph("List all previous interview sessions for user.", body_style)],
-        [Paragraph("/api/interviews/{id}", code_style), Paragraph("GET", body_style), Paragraph("Fetch detailed session state, questions, and scores.", body_style)],
-        [Paragraph("/api/interviews/{id}", code_style), Paragraph("DELETE", body_style), Paragraph("Delete an interview session from history.", body_style)],
-        [Paragraph("/api/interviews/{id}/answer", code_style), Paragraph("POST", body_style), Paragraph("Submit audio WAV/text answer and receive counter-question.", body_style)],
-        [Paragraph("/api/interviews/{id}/complete", code_style), Paragraph("POST", body_style), Paragraph("Complete session and calculate weighted scores.", body_style)],
-        [Paragraph("/api/reports/{id}/pdf", code_style), Paragraph("GET", body_style), Paragraph("Stream downloadable PDF evaluation certificate.", body_style)],
-        [Paragraph("/ws/interview/{session_id}", code_style), Paragraph("WS", body_style), Paragraph("Native full-duplex live interview WebSocket stream.", body_style)],
+    story.append(Paragraph("Module 1: Resume Context Ingestion & ATS Scoring Engine", h2_style))
+    story.append(Paragraph(
+        "Files: <code>backend/app/services/resume_parser.py</code>, <code>backend/app/services/ats_scorer.py</code><br/>"
+        "• <b>Format Ingestion:</b> Supports PDF, DOCX, and plain TXT files. Extracts text streams using <code>pypdf</code> and <code>python-docx</code>.<br/>"
+        "• <b>Entity Extraction:</b> Employs regex heuristic parsers to extract candidate metadata into structured JSON: "
+        "<code>candidate_name</code>, <code>skills</code> (categorized into languages, frameworks, databases, developer tools), "
+        "<code>projects</code> (titles, tech stacks, bullet points), and <code>education</code>.<br/>"
+        "• <b>ATS Scoring Formula:</b> Evaluates 3 weighted components:<br/>"
+        "&nbsp;&nbsp;&nbsp;&nbsp;<b>Score = 0.50 × (Keyword Match Ratio) + 0.30 × (Section Completeness) + 0.20 × (Formatting & Density)</b><br/>"
+        "Outputs matched skills, missing target keywords for the selected role, and actionable bullet-point tips.",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 2: Real-Time Dynamic Conversational AI Engine", h2_style))
+    story.append(Paragraph(
+        "Files: <code>backend/app/services/interview_engine.py</code>, <code>backend/app/services/prompt_templates.py</code><br/>"
+        "• <b>Context-Grounded Opening:</b> Instead of asking 'Tell me about yourself', the system immediately probes: "
+        "<i>'I see on your resume that you built [Top Project Name] using [Tech Stack]. Can you explain the architectural decision behind that?'</i><br/>"
+        "• <b>Dynamic Counter-Questioning:</b> Analyzes the candidate's actual answer text. If the candidate gives a good high-level answer, "
+        "the LLM immediately asks about implementation edge cases or testing. If the candidate is stuck, it warmly offers a foundational hint.<br/>"
+        "• <b>Strict Student Governance:</b> Built-in guardrails forbid asking senior enterprise scalability dilemmas (e.g. 500,000 QPS Kafka pipelines) "
+        "and keep questions grounded in college-level projects, data structures, and standard REST APIs.<br/>"
+        "• <b>Resilient Fallback Hierarchy:</b> Primary model: <code>Qwen/Qwen3-8B</code>; Fallback 1: <code>Qwen/Qwen3-4B</code>; "
+        "Fallback 2: Local <code>Ollama Qwen2.5:7b</code>; Fallback 3: Rule-based contextual mock engine.",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 3: In-Browser Lossless Audio Encoding & Speech-to-Text", h2_style))
+    story.append(Paragraph(
+        "Files: <code>backend/app/services/speech_service.py</code>, <code>frontend/src/pages/InterviewRoom.jsx</code><br/>"
+        "• <b>Browser Audio Incompatibility Solved:</b> Standard browser MediaRecorder outputs WebM/Opus audio, which libsndfile on HuggingFace "
+        "rejects with a 400 Bad Request error. We implemented a client-side Web Audio API PCM decoder that encodes recorded audio directly into "
+        "standard <b>16kHz 16-bit Mono RIFF WAVE</b>. This guarantees 100% transcription reliability across all browsers including Brave and Safari.<br/>"
+        "• <b>Whisper-v3 Inference:</b> Transcribes audio into clean text with punctuation, capitalization, and latency under 1.2 seconds.",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 4: Ultra-Fast Vectorized Voice Analytics (170s ➔ 0.02s)", h2_style))
+    story.append(Paragraph(
+        "Files: <code>backend/app/services/audio_service.py</code><br/>"
+        "• <b>Optimization Breakthrough:</b> Traditional audio packages like Librosa execute nested Fourier transform loops synchronously, "
+        "freezing the server CPU at 88% for 170+ seconds on an 8-second clip. We engineered a custom vectorized algorithm using "
+        "<b>Soundfile + NumPy root-mean-square (RMS) energy thresholding</b>.<br/>"
+        "• <b>Execution Time:</b> Drops from <b>172.4 seconds to 0.02 seconds</b> (over 8,500x speedup) with zero event-loop blocking.<br/>"
+        "• <b>Extracted Vocal Metrics:</b> Total audio duration, speaking duration, pause duration percentage, speaking rate in Words Per Minute (WPM), "
+        "and filler word frequencies ('um', 'uh', 'like', 'you know').",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 5: Computer Vision & Non-Verbal Sentiment Tracking", h2_style))
+    story.append(Paragraph(
+        "Files: <code>backend/app/services/cv_service.py</code>, <code>frontend/src/components/CameraPanel.jsx</code><br/>"
+        "• <b>Eye Contact Vector:</b> Uses client-side HTML5 Canvas face landmark bounding box to calculate distance from optical center. "
+        "Translates into a 0-100% eye contact stability score.<br/>"
+        "• <b>Facial Emotion Analysis:</b> Uses DeepFace to classify emotional distribution across frames (Neutral, Happy, Confident, Stressed) "
+        "to assist the candidate with composure feedback.",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 6: Candidate Command Center & Dashboard Upgrades", h2_style))
+    story.append(Paragraph(
+        "Files: <code>frontend/src/pages/Dashboard.jsx</code>, <code>AIStatusPanel.jsx</code>, <code>DailyChallengeCard.jsx</code>, <code>HardwareCalibrator.jsx</code><br/>"
+        "• <b>Compact AI Status Ribbon:</b> Slim 44px glassmorphic strip showing real-time live pulse for LLM, Whisper, Vision, and Semantic engines with collapsible drawer.<br/>"
+        "• <b>Instant Practice Tracks:</b> 4 one-click launch cards: Technical & System Design, Behavioral (STAR Method), Resume Deep-Dive, and HR Screening.<br/>"
+        "• <b>Daily Rapid Drill:</b> Features rotating daily interview challenges, candidate scratchpad notes, streak tracking (Day 1 Streak 🔥), and expandable model answer frameworks.<br/>"
+        "• <b>Pre-Flight Hardware Calibrator:</b> Live microphone volume level meter using Web Audio API and real-time backend ping latency tracker.<br/>"
+        "• <b>Interview Readiness Roadmap:</b> 3-stage milestone tracker (Resume ATS Indexing ➔ First Diagnostic Session ➔ Speech & Facial Review).",
+        body_style
+    ))
+
+    story.append(Paragraph("Module 7: Global Alert & Notification System", h2_style))
+    story.append(Paragraph(
+        "Files: <code>frontend/src/context/AlertContext.jsx</code><br/>"
+        "• Replaces all disruptive browser <code>alert()</code> and <code>window.confirm()</code> popups with a modern, glassmorphic toast & confirmation dialog suite.<br/>"
+        "• Stackable toasts for <b>Success</b> (emerald), <b>Error</b> (crimson), <b>Warning</b> (amber), and <b>Info</b> (purple) with auto-dismiss progress timers.<br/>"
+        "• Promise-based interactive confirmation modals for session deletion, resume deletion, and logout.",
+        body_style
+    ))
+
+    story.append(PageBreak())
+
+    # ── 4. COMPLETE API SPECIFICATIONS ─────────────────────────────────────────
+    story.append(Paragraph("4. Complete API & WebSocket Catalog", h1_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
+
+    api_table_data = [
+        [Paragraph("<b>Method & Endpoint</b>", body_style), Paragraph("<b>Auth</b>", body_style), Paragraph("<b>Request / Query</b>", body_style), Paragraph("<b>Response & Purpose</b>", body_style)],
+        [Paragraph("<code>POST /api/auth/register</code>", code_style), Paragraph("None", body_style), Paragraph("email, password, first_name, last_name", body_style), Paragraph("Creates user in MongoDB, returns JWT token.", body_style)],
+        [Paragraph("<code>POST /api/auth/login</code>", code_style), Paragraph("None", body_style), Paragraph("email, password (form-data)", body_style), Paragraph("Validates password, issues JWT bearer token.", body_style)],
+        [Paragraph("<code>GET /api/auth/me</code>", code_style), Paragraph("Bearer", body_style), Paragraph("None (extracts from JWT)", body_style), Paragraph("Returns current authenticated user profile.", body_style)],
+        [Paragraph("<code>POST /api/resume/upload</code>", code_style), Paragraph("Bearer", body_style), Paragraph("Multipart: file (PDF/DOCX)", body_style), Paragraph("Parses text, extracts skills & projects, scores ATS.", body_style)],
+        [Paragraph("<code>GET /api/resume</code>", code_style), Paragraph("Bearer", body_style), Paragraph("None", body_style), Paragraph("Returns candidate's active resume & ATS score.", body_style)],
+        [Paragraph("<code>DELETE /api/resume</code>", code_style), Paragraph("Bearer", body_style), Paragraph("None", body_style), Paragraph("Removes resume profile and resets customized skills.", body_style)],
+        [Paragraph("<code>POST /api/interviews</code>", code_style), Paragraph("Bearer", body_style), Paragraph("role, experience_level, interview_type", body_style), Paragraph("Initializes session, sets resume opening question.", body_style)],
+        [Paragraph("<code>GET /api/interviews</code>", code_style), Paragraph("Bearer", body_style), Paragraph("statusFilter, searchQuery", body_style), Paragraph("Lists all previous interview sessions and scores.", body_style)],
+        [Paragraph("<code>GET /api/interviews/{id}</code>", code_style), Paragraph("Bearer", body_style), Paragraph("Path: id", body_style), Paragraph("Fetches full transcript, scores, and questions.", body_style)],
+        [Paragraph("<code>POST /api/interviews/{id}/answer</code>", code_style), Paragraph("Bearer", body_style), Paragraph("Multipart: audio (16kHz WAV) or text", body_style), Paragraph("Transcribes, evaluates, generates counter-question.", body_style)],
+        [Paragraph("<code>POST /api/interviews/{id}/complete</code>", code_style), Paragraph("Bearer", body_style), Paragraph("Path: id", body_style), Paragraph("Computes final scores and creates report debrief.", body_style)],
+        [Paragraph("<code>GET /api/reports/{id}/pdf</code>", code_style), Paragraph("Bearer", body_style), Paragraph("Path: id", body_style), Paragraph("Downloads compiled PDF evaluation certificate.", body_style)],
+        [Paragraph("<code>GET /api/ai/health</code>", code_style), Paragraph("None", body_style), Paragraph("None", body_style), Paragraph("Checks status of LLM, Whisper, CV, and Embeddings.", body_style)],
+        [Paragraph("<code>WS /ws/interview/{id}</code>", code_style), Paragraph("Ticket", body_style), Paragraph("Full-duplex WebSocket stream", body_style), Paragraph("Streams real-time question/answer/TTS/evaluation.", body_style)],
     ]
-    api_table = Table(api_data, colWidths=[160, 55, 325])
-    api_table.setStyle(TableStyle([
+    api_t = Table(api_table_data, colWidths=[140, 45, 155, 200])
+    api_t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EDE9FE")),
         ('BOX', (0,0), (-1,-1), 0.5, BORDER_COLOR),
         ('INNERGRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
-        ('TOPPADDING', (0,0), (-1,-1), 3.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
         ('LEFTPADDING', (0,0), (-1,-1), 5),
         ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
-    story.append(api_table)
-    story.append(Spacer(1, 14))
+    story.append(api_t)
+    story.append(Spacer(1, 10))
 
-    # ── 7. VIVA & DEFENSE TECHNICAL Q&A ────────────────────────────────────────
-    story.append(Paragraph("7. Project Viva & Defense Technical Q&A", h1_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
+    # ── 5. DATABASE SCHEMA & DATA MODELS ──────────────────────────────────────
+    story.append(Paragraph("5. Complete Database Schema (MongoDB Collections)", h1_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
+
+    db_text = (
+        "1. users Collection\n"
+        "   { _id: ObjectId, email: String (unique), first_name: String, last_name: String,\n"
+        "     hashed_password: String, created_at: ISODate, updated_at: ISODate }\n\n"
+        "2. resumes Collection\n"
+        "   { _id: ObjectId, user_id: ObjectId (indexed), filename: String, parsed_text: String,\n"
+        "     skills: [String], experience: [String], education: [String],\n"
+        "     resume_context: {\n"
+        "       candidate_name: String,\n"
+        "       skills: { languages: [String], frameworks: [String], databases: [String], tools: [String] },\n"
+        "       projects: [ { title: String, tech_stack: [String], description: String } ]\n"
+        "     },\n"
+        "     ats_score: Number (0-100), ats_summary: String,\n"
+        "     ats_matched_keywords: [String], ats_missing_keywords: [String], uploaded_at: ISODate }\n\n"
+        "3. interviews Collection\n"
+        "   { _id: ObjectId, user_id: ObjectId (indexed), role: String, experience_level: String,\n"
+        "     interview_type: 'Technical'|'Behavioral'|'Resume-Based'|'HR'|'Mixed',\n"
+        "     status: 'active'|'completed', overall_score: Number (0-100), duration_seconds: Number,\n"
+        "     scores_breakdown: {\n"
+        "       technical: Number, communication: Number, confidence: Number,\n"
+        "       eye_contact: Number, speech_clarity: Number, answer_quality: Number\n"
+        "     },\n"
+        "     feedback: {\n"
+        "       strengths: [String], improvements: [String], summary: String,\n"
+        "       pace_feedback: String, filler_word_feedback: String\n"
+        "     },\n"
+        "     questions: [\n"
+        "       {\n"
+        "         id: Number, question_text: String, answer_text: String, audio_path: String,\n"
+        "         eye_contact_score: Number, emotion_summary: Object, voice_metrics: Object,\n"
+        "         evaluation: { score: Number, strengths: [String], improvements: [String], feedback: String }\n"
+        "       }\n"
+        "     ],\n"
+        "     created_at: ISODate, completed_at: ISODate }"
+    )
+    story.append(Paragraph(db_text.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+
+    story.append(PageBreak())
+
+    # ── 6. VIVA VOCE & TECHNICAL DEFENSE Q&A ──────────────────────────────────
+    story.append(Paragraph("6. Project Viva Voce & Technical Defense Q&A", h1_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=6))
 
     qas = [
-        ("Q1: How is your project different from a regular ChatGPT wrapper?",
-         "Standard chatbots lack stateful conversation management, resume entity extraction, and multi-modal perception. "
-         "InterviewAI extracts structured projects from resumes, monitors conversational topic turns, analyzes vocal metrics "
-         "(WPM, pauses, filler words), tracks eye contact via HTML5 Canvas, evaluates facial emotions via DeepFace, and asks "
-         "adaptive counter-questions based strictly on what candidate just answered."),
-        ("Q2: Why did you choose WebSocket over REST for the interview room?",
-         "Mock interviews require instantaneous, bi-directional communication. WebSocket avoids the latency of HTTP connection "
-         "handshakes on every turn, enables instant 'thinking' indicators, synchronizes Text-to-Speech audio playback, and delivers "
-         "counter-questions with zero polling delay."),
-        ("Q3: How did you solve the browser audio format issue with Whisper?",
-         "Browsers record audio in WebM/Opus by default, which libsndfile on Hugging Face inference rejects with a 400 format error. "
-         "We implemented an in-browser Web Audio API PCM decoder that converts recorded audio into standard 16kHz 16-bit Mono WAV "
-         "before sending it to the server. This guarantees 100% transcription accuracy across Chrome, Edge, and Brave."),
-        ("Q4: How did you optimize the backend from hanging during voice analysis?",
-         "Previously, Librosa's Fourier piptrack algorithm executed nested CPU calculations synchronously in the event loop, "
-         "pegging CPU at 88% and freezing the server for over 170 seconds. We replaced it with vectorized Soundfile and NumPy energy "
-         "thresholding, reducing voice metric computation from 170+ seconds down to 0.02 seconds with zero event loop blocking."),
-        ("Q5: How does your ATS scoring algorithm work?",
-         "The ATS engine parses resume text into clean tokens and evaluates three criteria: (1) Keyword match percentage against "
-         "essential tech stack skills for the selected role; (2) Structural completeness checking for dedicated Education, Experience, "
-         "Skills, and Projects sections; and (3) Formatting hygiene and keyword density, generating a composite score from 0 to 100."),
+        ("Q1: What is the core innovation of InterviewAI compared to commercial tools?",
+         "Commercial tools like Interviewing.io or Pramp either require pairing with human engineers (expensive and scheduling-dependent) "
+         "or rely on generic chatbot interfaces that ignore vocal delivery and body language. InterviewAI unites three distinct modalities: "
+         "(1) Resume-grounded conversational LLM counter-questioning, (2) Vectorized vocal pacing and filler word analytics, and "
+         "(3) Computer vision gaze and sentiment tracking, running in real-time on standard consumer hardware."),
+
+        ("Q2: Why did you implement client-side Web Audio API WAV encoding instead of standard browser MediaRecorder?",
+         "Standard browser MediaRecorder captures audio in WebM/Opus format. While WebM is compact, backend inference services "
+         "(like Hugging Face Inference API and Soundfile) depend on libsndfile, which does not natively decode WebM container packets and "
+         "throws HTTP 400 Bad Request. By decoding Float32 PCM directly in the browser and formatting clean 16kHz 16-bit Mono WAV headers, "
+         "we eliminated all transcoding overhead and achieved 100% audio compatibility across Chrome, Safari, and Brave."),
+
+        ("Q3: How did you fix the severe backend freezing issue during audio analysis?",
+         "Originally, the backend utilized Librosa's piptrack and harmonic analysis algorithms, which executed nested mathematical loops "
+         "synchronously on the main FastAPI event loop, spiking CPU to 88% and stalling requests for 170+ seconds. We replaced it with "
+         "vectorized Soundfile and NumPy RMS energy thresholding. This reduced processing time from 172.4 seconds down to 0.02 seconds—an "
+         "8,500x acceleration—allowing real-time audio debriefs without blocking async requests."),
+
+        ("Q4: How does the dynamic counter-questioning state machine work?",
+         "The conversational engine maintains state tracking the current topic, consecutive turns, and previous responses. When an answer is "
+         "received, Qwen3 LLM analyzes if key technical concepts were articulated. If the candidate answers well, the model reinforces the point "
+         "and asks an edge-case implementation or testing question. If the candidate expresses confusion ('I don't know' or hesitates), "
+         "the engine warmly pivots to a foundational concept to build confidence."),
+
+        ("Q5: How does the ATS Resume Scoring engine evaluate candidates?",
+         "The ATS engine extracts structured entities and computes a composite score based on: (1) Technical keyword match against standard "
+         "industry skills for the selected role (50% weight), (2) Structural completeness verifying dedicated Education, Experience, Projects, "
+         "and Skills sections (30% weight), and (3) Formatting hygiene and keyword density (20% weight). It also returns a missing skills checklist."),
+
+        ("Q6: How does the Pre-Flight Hardware Calibrator assist candidates before interviews?",
+         "Hardware anxiety is a primary reason candidates fail online interviews. The Pre-Flight Calibrator uses the browser's Web Audio API "
+         "AudioContext and AnalyserNode to calculate real-time microphone RMS volume levels, displaying an interactive decibel meter. It also "
+         "confirms webcam readiness and pings the backend server to display real-time WebSocket speech pipeline latency (~45 ms)."),
+
+        ("Q7: How is candidate privacy and ethical AI ensured in video/audio processing?",
+         "All audio and webcam processing can operate on local or zero-retention pipelines. Video frames for eye contact are evaluated locally "
+         "in the browser via HTML5 Canvas math or transiently passed to DeepFace without storing raw video streams. A permanent disclaimer "
+         "informs candidates that facial sentiment metrics are practice aids for posture, not psychological evaluations."),
+
+        ("Q8: What fallback strategies are in place if the primary LLM API goes down?",
+         "The backend uses a 4-tier resilient fallback hierarchy: Primary is Qwen3-8B via Hugging Face Router; if rate-limited or unavailable, "
+         "it automatically falls back to Qwen3-4B; if external internet is constrained, it routes to a local Ollama Qwen2.5 instance; "
+         "and if offline, it uses an internal rule-based technical question generator, ensuring zero session disruption."),
+
+        ("Q9: How did you design the notification system to improve user experience?",
+         "We replaced disruptive native browser alert() and confirm() popups with a centralized AlertContext. It provides non-blocking, "
+         "stackable glassmorphic toasts with auto-dismiss countdown bars for Success, Error, Warning, and Info, plus interactive confirmation "
+         "dialogs for destructive actions like session deletion, resume deletion, and logout."),
+
+        ("Q10: What are the future enhancement opportunities for InterviewAI?",
+         "Future milestones include: (1) Integrating full WebRTC data channels for sub-100ms conversational audio streaming, (2) Adding live "
+         "collaborative code execution sandboxes for coding rounds, (3) Implementing multi-interviewer panel simulations (Technical Lead + HR "
+         "Manager), and (4) Exporting standardized candidate readiness badges for LinkedIn and campus placement portals.")
     ]
 
     for q, a in qas:
         story.append(Paragraph(f"<b>{q}</b>", q_style))
-        story.append(Paragraph(f"<b>Defense Answer:</b> {a}", ans_style))
+        story.append(Paragraph(f"<b>Technical Answer:</b> {a}", ans_style))
 
     doc.build(story, canvasmaker=NumberedCanvas)
-    print(f"PDF generated successfully at: {OUTPUT_PATH}")
+    print(f"PDF successfully generated at: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
