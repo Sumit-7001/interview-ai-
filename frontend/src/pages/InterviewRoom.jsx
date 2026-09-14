@@ -399,8 +399,9 @@ const InterviewRoom = () => {
     if (type === 'complete') {
       setAiThinking(false);
       stopSpeech();
+      toast.success(msg.message || 'All interview questions completed! Preparing your performance diagnostic report...', 'Session Finished');
       if (msg.redirect_url) {
-        setTimeout(() => navigate(msg.redirect_url), 1500);
+        setTimeout(() => navigate(msg.redirect_url), 1200);
       }
       return;
     }
@@ -692,10 +693,19 @@ const InterviewRoom = () => {
     }
   };
 
+  const answeredQuestionsCount = wsMode
+    ? (conversationLog.length + (lastFeedback ? 1 : 0))
+    : (interview?.questions?.filter(q => q.answer_text !== null).length || 0);
+
   const handleCompleteInterview = async () => {
+    if (answeredQuestionsCount === 0) {
+      toast.warning('Please answer at least one question before finishing the interview.', 'Interview in Progress');
+      return;
+    }
+
     const confirmed = await confirm({
       title: 'Finish Interview Session?',
-      message: 'Are you ready to submit your interview and generate your performance report with voice & emotion metrics?',
+      message: `You have completed ${answeredQuestionsCount} response${answeredQuestionsCount > 1 ? 's' : ''}. Are you ready to submit and generate your comprehensive AI diagnostics & performance report?`,
       confirmText: 'Yes, View Report',
       cancelText: 'Stay in Session',
       type: 'info'
@@ -891,6 +901,18 @@ const InterviewRoom = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Finish & View Report Button */}
+          {answeredQuestionsCount >= 1 && (
+            <button
+              onClick={handleCompleteInterview}
+              className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-glow transition-all active:scale-95"
+              title="Finish interview session and view detailed diagnostic report"
+            >
+              <Award size={13} />
+              <span>Finish & View Report</span>
+            </button>
+          )}
+
           {/* WS Status */}
           <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${wsConnected ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-gray-500/10 border-gray-500/20 text-gray-500'}`}>
             {wsConnected ? <Wifi size={10} /> : <WifiOff size={10} />}
@@ -918,8 +940,12 @@ const InterviewRoom = () => {
 
           {/* Dynamic question counter */}
           {wsMode && dynamicQuestion && (
-            <span className="text-xs text-gray-400 font-mono">
-              Q#{dynamicQuestion.question_number}
+            <span className={`text-xs font-mono px-2.5 py-1 rounded-full border ${
+              dynamicQuestion.is_last 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold' 
+                : 'bg-midnight border-midnight-border text-gray-400'
+            }`}>
+              Q#{dynamicQuestion.question_number}{dynamicQuestion.is_last ? ' (Final)' : '/10'}
             </span>
           )}
         </div>
@@ -1048,6 +1074,13 @@ const InterviewRoom = () => {
                     'bg-green-500/10 border-green-500/20 text-green-400'
                   }`}>
                     {(dynamicQuestion?.difficulty || interview?.difficulty || 'MEDIUM').toUpperCase()}
+                  </span>
+                )}
+
+                {/* Final Question indicator */}
+                {dynamicQuestion?.is_last && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 animate-pulse">
+                    🏁 Final Question
                   </span>
                 )}
               </div>
@@ -1240,53 +1273,43 @@ const InterviewRoom = () => {
               )}
             </div>
 
-            {/* Navigation buttons */}
-            {hasAnsweredCurrent && !submittingAnswer && !aiThinking && currentGrading && (
-              <div className="mt-auto pt-4 border-t border-midnight-border/40 flex justify-between items-center">
-                {wsMode ? (
-                  <button
-                    onClick={endWsInterview}
-                    className="text-xs text-gray-500 hover:text-red-400 transition-colors underline"
-                  >
-                    End Interview
-                  </button>
-                ) : (
-                  isLastQuestion ? (
-                    <span />
-                  ) : (
-                    <button onClick={handleNextQuestion} className="text-xs text-gray-500 hover:text-white transition-colors">
-                      ← Previous
-                    </button>
-                  )
-                )}
-
-                {!wsMode && (
-                  isLastQuestion ? (
-                    <button onClick={handleCompleteInterview} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow">
-                      <Award size={14} />
-                      <span>Complete & View Report</span>
-                    </button>
-                  ) : (
-                    <button onClick={handleNextQuestion} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-glow">
-                      <span>Next Question</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  )
-                )}
-
-                {wsMode && (
-                  <span className="text-[10px] text-gray-500">Answer submitted — AI generating next question...</span>
-                )}
+            {/* Session Progress & Finish Bar (always visible once at least 1 question is answered) */}
+            {answeredQuestionsCount >= 1 && (
+              <div className="mt-auto pt-3.5 border-t border-midnight-border/40 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-gray-400 font-mono">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{answeredQuestionsCount}/10 completed</span>
+                </div>
+                <button
+                  onClick={handleCompleteInterview}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-all active:scale-95 shadow-sm"
+                  title="Finish interview and calculate final score"
+                >
+                  <Award size={13} />
+                  <span>Finish & View Report</span>
+                </button>
               </div>
             )}
 
-            {/* WS mode: Complete button shown after last question */}
-            {wsMode && dynamicQuestion?.is_last && hasAnsweredCurrent && !submittingAnswer && !aiThinking && (
-              <div className="mt-4 pt-4 border-t border-midnight-border/40">
-                <button onClick={endWsInterview} className="bg-primary hover:bg-primary-dark text-white font-bold w-full px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-glow">
-                  <Award size={14} />
-                  <span>Complete Interview & View Report</span>
-                </button>
+            {/* REST Mode Next/Prev controls */}
+            {!wsMode && hasAnsweredCurrent && !submittingAnswer && (
+              <div className="mt-3 flex justify-between items-center">
+                {!isLastQuestion && (
+                  <button onClick={handleNextQuestion} className="text-xs text-gray-500 hover:text-white transition-colors">
+                    ← Previous
+                  </button>
+                )}
+                {isLastQuestion ? (
+                  <button onClick={handleCompleteInterview} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow ml-auto">
+                    <Award size={14} />
+                    <span>Complete & View Report</span>
+                  </button>
+                ) : (
+                  <button onClick={handleNextQuestion} className="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow ml-auto">
+                    <span>Next Question</span>
+                    <ArrowRight size={14} />
+                  </button>
+                )}
               </div>
             )}
           </div>

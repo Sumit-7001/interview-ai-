@@ -16,6 +16,7 @@ This engine transforms the interview into an authentic, human-like dialogue:
 """
 
 import re
+import json
 import random
 import logging
 from typing import Any, Dict, List, Optional
@@ -45,6 +46,19 @@ async def generate_opening_question(
     experience = resume_context.get("experience", [])
     candidate_name = resume_context.get("candidate_name", "Candidate")
 
+    # Log opening question context
+    logger.info(
+        "\n[OPENING QUESTION LLM CONTEXT]\n"
+        "Resume Context: %s\n"
+        "Role: %s\n"
+        "Experience Level: %s\n"
+        "Interview Type: %s\n",
+        json.dumps(resume_context, default=str),
+        role,
+        experience_level,
+        interview_type,
+    )
+
     # 1. Try LLM generation with resume context
     prompt = resume_opening_question_prompt(
         role=role,
@@ -52,7 +66,7 @@ async def generate_opening_question(
         interview_type=interview_type,
         resume_context=resume_context,
     )
-    llm_res = await call_llm_json(prompt, max_new_tokens=300, temperature=0.3)
+    llm_res = await call_llm_json(prompt, max_new_tokens=350, temperature=0.2)
 
     if llm_res and isinstance(llm_res, dict) and "question" in llm_res:
         q_text = str(llm_res["question"]).strip()
@@ -72,11 +86,11 @@ async def generate_opening_question(
     if projects:
         top_project = projects[0]
         p_name = top_project.get("name", "your project")
-        techs = ", ".join(top_project.get("technologies", [])[:2])
+        techs = ", ".join(top_project.get("technologies", [])[:3])
         tech_clause = f" using {techs}" if techs else ""
         fallback_q = (
-            f"I noticed on your resume that you built {p_name}{tech_clause}. "
-            f"In simple words, can you explain what this project does and what specific parts you personally worked on?"
+            f"I noticed you built an {p_name}{tech_clause}. "
+            f"Can you explain the architecture and your personal contribution to it?"
         )
         topic = p_name
     elif experience:
@@ -85,12 +99,12 @@ async def generate_opening_question(
         role_t = top_exp.get("role", role)
         fallback_q = (
             f"I see from your resume that you worked as a {role_t} at {company}. "
-            f"In simple words, can you tell me what kind of tasks you worked on there?"
+            f"Can you walk me through the system architecture and responsibilities you had there?"
         )
         topic = f"{role_t} at {company}"
     else:
         fallback_q = (
-            f"Welcome to the interview! To get started, can you tell me about a favorite project you've worked on recently?"
+            f"Welcome to the interview! To get started, can you tell me about the architecture of a technical project you built recently?"
         )
         topic = "Recent Project"
 
@@ -104,7 +118,7 @@ async def generate_opening_question(
     }
 
 
-# ── Deterministic Counter-Question Heuristics Fallback ─────────────────────────
+# ── Intelligent Answer-Driven Counter-Question Heuristic Fallback ────────────
 
 def _heuristic_counter_question(
     prev_question: str,
@@ -112,23 +126,24 @@ def _heuristic_counter_question(
     current_topic: str,
     turns_on_topic: int,
     resume_context: Dict[str, Any],
+    topics_discussed: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Intelligent rule-based counter-question fallback when LLM is offline.
-    Uses candidate's actual words and resume context to form a real counter-question.
+    Intelligent answer-driven counter-question fallback when LLM is offline or invalid.
+    Extracts explicit claims, technologies, and reasoning directly from candidate's answer.
     """
     answer_lower = candidate_answer.lower().strip()
     words = candidate_answer.split()
     word_count = len(words)
 
-    # 1. Handle "I don't know" or refusal
+    # 1. Handle "I don't know" or empty refusal
     dont_know_signals = ["don't know", "dont know", "not sure", "no idea", "forgot", "can't recall", "cant recall"]
-    if any(sig in answer_lower for sig in dont_know_signals) or word_count < 4:
+    if any(sig in answer_lower for sig in dont_know_signals) or word_count < 3:
         return {
-            "answer_analysis": {"relevance": 40, "technical_accuracy": 35, "clarity": 50, "completeness": 30},
+            "answer_analysis": {"relevance": 45, "technical_accuracy": 40, "clarity": 50, "completeness": 30},
             "candidate_behavior": "dont_know",
             "detected_topics": [],
-            "missing_concepts": ["core concept explanation", "trade-off analysis"],
+            "missing_concepts": ["core concept explanation"],
             "feedback": "No problem! Interviews are a discussion. Let's look at this from a different angle.",
             "next_question": f"Let's take a step back on {current_topic}: conceptually, what problem does this approach solve, and what is the primary benefit of using it?",
             "question_type": "pivot_angle",
@@ -137,90 +152,73 @@ def _heuristic_counter_question(
             "switch_topic": False,
         }
 
-    # 2. Detect specific concepts mentioned in the candidate's answer (Easy / Student-Friendly)
-    concept_counter_questions = {
-        "langchain": "You mentioned LangChain. In simple words, how did you use LangChain in your project to connect with the AI model?",
-        "embedding": "You mentioned embeddings. In simple terms, how did embeddings help your project find relevant answers?",
-        "vector": "You brought up vector search. In simple words, how did you store and search through the project documents?",
-        "fastapi": "You mentioned FastAPI. In simple words, how did you connect your FastAPI backend to the frontend?",
-        "websocket": "You mentioned WebSockets. Why did you use WebSockets instead of regular HTTP requests in your project?",
-        "react": "You mentioned React. Which main components or screens did you build, and how did you handle user button clicks or inputs?",
-        "mongodb": "You mentioned MongoDB. What kind of data or records did you store in your database?",
-        "threshold": "You mentioned thresholds. In simple terms, how did you choose this threshold value?",
-        "asyncio": "You mentioned asynchronous processing. In simple terms, where was async helpful in your application?",
-        "yolo": "You mentioned YOLO. What objects was your model detecting, and how did you test it?",
-        "rest": "You mentioned REST APIs. What were some of the main API routes or endpoints you created?",
-    }
+    # 2. Extract technologies mentioned
+    known_techs = [
+        "FastAPI", "React", "MongoDB", "Python", "JavaScript", "TypeScript", "Node.js", "Express",
+        "Django", "Flask", "PostgreSQL", "MySQL", "Redis", "Docker", "Kubernetes", "WebSockets",
+        "GraphQL", "REST", "LangChain", "PyTorch", "TensorFlow", "OpenCV", "Whisper", "Next.js"
+    ]
+    mentioned_techs = [tech for tech in known_techs if re.search(r'\b' + re.escape(tech.lower()) + r'\b', answer_lower)]
 
-    matched_concept = None
-    for keyword, counter_q in concept_counter_questions.items():
-        if keyword in answer_lower:
-            matched_concept = (keyword, counter_q)
-            break
+    # 3. Detect explicit claims and conversational intent
+    has_async = any(w in answer_lower for w in ["async", "asynchronous", "asyncio"])
+    has_realtime = any(w in answer_lower for w in ["real-time", "realtime", "websocket", "streaming"])
+    has_backend_choice = any(w in answer_lower for w in ["backend", "server", "api"]) and any(t in answer_lower for t in ["fastapi", "flask", "django", "express", "node"])
+    because_match = re.search(r'because\s+(.+)', candidate_answer, re.IGNORECASE)
 
-    # 3. If topic has reached 3 turns, smoothly transition to the next resume topic
-    projects = resume_context.get("projects", [])
-    remaining_projects = [p for p in projects if p.get("name") and p.get("name").lower() not in current_topic.lower()]
+    next_q = None
+    detected = mentioned_techs[:]
+    missing = []
+    question_type = "counter_question"
 
-    if turns_on_topic >= 3 and remaining_projects:
-        next_p = remaining_projects[0]
-        next_name = next_p.get("name")
-        next_techs = ", ".join(next_p.get("technologies", [])[:2])
-        tech_clause = f" using {next_techs}" if next_techs else ""
-        return {
-            "answer_analysis": {"relevance": 85, "technical_accuracy": 80, "clarity": 85, "completeness": 80},
-            "candidate_behavior": "strong",
-            "detected_topics": [current_topic],
-            "missing_concepts": [],
-            "feedback": "Great explanation! That gives me a clear picture of your work there.",
-            "next_question": f"That's very clear! I'd also love to hear about another project on your resume: {next_name}{tech_clause}. In simple words, what does this project do?",
-            "question_type": "new_topic",
-            "difficulty": "easy",
-            "current_topic": next_name,
-            "switch_topic": True,
-        }
+    if has_async:
+        next_q = "You mentioned asynchronous APIs. Where did you use asynchronous processing in your project, and what benefit did it provide?"
+        detected.append("asynchronous processing")
+        missing.append("concurrency handling and non-blocking I/O")
+        question_type = "deep_dive"
+    elif has_realtime:
+        next_q = "You mentioned real-time communication. How did you implement that in your application, and why did you choose WebSockets?"
+        detected.append("real-time communication")
+        missing.append("socket connection lifecycle and event handling")
+        question_type = "deep_dive"
+    elif has_backend_choice:
+        backend_tech = next((t for t in ["FastAPI", "Django", "Flask", "Express", "Node.js"] if t.lower() in answer_lower), "your backend framework")
+        next_q = f"Why did you choose {backend_tech} for the backend?"
+        detected.append(backend_tech)
+        missing.append(f"architectural rationale for {backend_tech}")
+        question_type = "counter_question"
+    elif because_match and mentioned_techs:
+        tech = mentioned_techs[0]
+        reason_clause = because_match.group(1).strip().rstrip(".")
+        next_q = f"You mentioned that {reason_clause}. Why was {tech} a better choice for this in your project compared to alternatives?"
+        missing.append(f"evaluation of {tech}")
+        question_type = "counter_question"
+    elif because_match:
+        reason_clause = because_match.group(1).strip().rstrip(".")
+        next_q = f"You mentioned that {reason_clause}. Can you elaborate on how that was implemented in {current_topic}?"
+        missing.append("implementation details")
+        question_type = "counter_question"
+    elif mentioned_techs:
+        tech = mentioned_techs[0]
+        next_q = f"What specific role did {tech} play in {current_topic}, and how did you handle data flow through it?"
+        missing.append(f"{tech} architecture")
+        question_type = "counter_question"
+    else:
+        # Quote a key phrase directly from the candidate's words
+        key_phrase = " ".join(words[:6]).rstrip(",.")
+        next_q = f"Building directly on your point about '{key_phrase}' — how did you implement this in {current_topic}?"
+        missing.append("implementation specifics")
+        question_type = "follow_up"
 
-    # 4. If matched a concept mentioned in the answer
-    if matched_concept:
-        kw, counter_q = matched_concept
-        return {
-            "answer_analysis": {"relevance": 85, "technical_accuracy": 80, "clarity": 80, "completeness": 75},
-            "candidate_behavior": "satisfactory",
-            "detected_topics": [kw],
-            "missing_concepts": [f"basic working mechanism of {kw}"],
-            "feedback": f"Good explanation touching on {kw}.",
-            "next_question": counter_q,
-            "question_type": "counter_question",
-            "difficulty": "easy",
-            "current_topic": current_topic,
-            "switch_topic": False,
-        }
-
-    # 5. Vague answer fallback (Easy / Student friendly)
-    if word_count < 20:
-        return {
-            "answer_analysis": {"relevance": 65, "technical_accuracy": 60, "clarity": 60, "completeness": 50},
-            "candidate_behavior": "vague",
-            "detected_topics": [],
-            "missing_concepts": ["simple practical example"],
-            "feedback": "You touched on the main idea! Let's keep it simple.",
-            "next_question": f"In simple words, can you give a quick example of how you used that in {current_topic}?",
-            "question_type": "clarification",
-            "difficulty": "easy",
-            "current_topic": current_topic,
-            "switch_topic": False,
-        }
-
-    # 6. Strong answer fallback (Friendly & Practical, NO 10x scale)
     return {
-        "answer_analysis": {"relevance": 90, "technical_accuracy": 85, "clarity": 85, "completeness": 85},
-        "candidate_behavior": "strong",
-        "detected_topics": ["implementation"],
-        "missing_concepts": ["testing and debugging"],
-        "feedback": "Great explanation! Very clear and to the point.",
-        "next_question": f"Building on what you said — what was one bug or challenge you faced while building {current_topic}, and how did you solve it?",
-        "question_type": "follow_up",
-        "difficulty": "easy",
+        "answer_analysis": {"relevance": 85, "technical_accuracy": 80, "clarity": 85, "completeness": 75},
+        "candidate_behavior": "strong" if word_count > 8 else "satisfactory",
+        "detected_topics": list(dict.fromkeys(detected)),
+        "missing_concepts": missing,
+        "feedback": "Clear explanation acknowledging your technical decisions.",
+        "next_question": next_q,
+        "question_type": question_type,
+        "difficulty": "medium",
         "current_topic": current_topic,
         "switch_topic": False,
     }
@@ -237,7 +235,8 @@ async def process_candidate_answer_and_next_question(
     turns_on_topic: int,
     conversation_history: List[Dict[str, Any]],
     resume_context: Dict[str, Any],
-    current_difficulty: str = "easy",
+    topics_discussed: Optional[List[str]] = None,
+    current_difficulty: str = "medium",
     question_number: int = 2,
 ) -> Dict[str, Any]:
     """
@@ -245,18 +244,30 @@ async def process_candidate_answer_and_next_question(
     1. Evaluates candidate's answer (relevance, accuracy, completeness, clarity)
     2. Detects missing concepts and specific topics mentioned
     3. Categorizes behavior (strong, vague, dont_know)
-    4. Formulates the next COUNTER QUESTION
-    5. Determines whether to advance difficulty or pivot topic
-
-    Returns structured evaluation + next question ready for WebSocket/REST response.
+    4. Formulates the next COUNTER QUESTION or DEEP-DIVE
+    5. Returns evaluation, next question, and updated topics_discussed
     """
     cleaned_answer = candidate_answer.strip()
     if not cleaned_answer:
         cleaned_answer = "(No response provided)"
 
+    topics_list = list(topics_discussed or [])
+    if current_topic and current_topic not in topics_list:
+        topics_list.append(current_topic)
+
+    # ── LOG CONTEXT BEFORE LLM CALL (Requirement H) ───────────────────────────
     logger.info(
-        "Processing Answer Q#%d | Topic: %s (Turn %d) | Diff: %s | Answer: %s...",
-        question_number, current_topic, turns_on_topic, current_difficulty, cleaned_answer[:60]
+        "\n[INTERVIEW LLM CONTEXT]\n"
+        "Resume Context: %s\n"
+        "Current Question: %s\n"
+        "Candidate Answer: %s\n"
+        "Conversation History: %s\n"
+        "Topics Discussed: %s\n",
+        json.dumps(resume_context, default=str),
+        prev_question,
+        cleaned_answer,
+        json.dumps(conversation_history, default=str),
+        json.dumps(topics_list, default=str),
     )
 
     # 1. Try high-intelligence LLM pass
@@ -268,49 +279,69 @@ async def process_candidate_answer_and_next_question(
         turns_on_topic=turns_on_topic,
         conversation_history=conversation_history,
         resume_context=resume_context,
+        topics_discussed=topics_list,
         current_difficulty=current_difficulty,
     )
 
-    llm_res = await call_llm_json(prompt, max_new_tokens=400, temperature=0.3)
+    llm_res = await call_llm_json(prompt, max_new_tokens=450, temperature=0.2)
 
     result = None
     if llm_res and isinstance(llm_res, dict) and "next_question" in llm_res:
         next_q = str(llm_res.get("next_question", "")).strip()
-        if len(next_q) > 15:
+        # Verify next_question is non-empty and not a generic reset
+        generic_resets = [
+            "what does your project do",
+            "what does the system do",
+            "can you explain what this project does",
+            "tell me about yourself",
+            "what are your strengths",
+        ]
+        is_generic_reset = any(gr in next_q.lower() for gr in generic_resets)
+        if len(next_q) > 15 and not (is_generic_reset and len(cleaned_answer) > 10):
             result = llm_res
             logger.info("LLM generated counter-question: %s...", next_q[:80])
+        else:
+            logger.warning("LLM returned generic reset or too short question: %s. Using answer-driven fallback.", next_q)
 
-    # 2. If LLM failed, use heuristic engine
+    # 2. If LLM failed or generated invalid question, use answer-driven fallback
     if not result:
-        logger.warning("LLM counter-question generation failed — using heuristic counter-question engine")
+        logger.warning("Using intelligent answer-driven counter-question fallback")
         result = _heuristic_counter_question(
             prev_question=prev_question,
             candidate_answer=cleaned_answer,
             current_topic=current_topic,
             turns_on_topic=turns_on_topic,
             resume_context=resume_context,
+            topics_discussed=topics_list,
         )
 
     # 3. Calculate standardized composite score (0 - 100)
     analysis = result.get("answer_analysis", {})
-    relevance = int(analysis.get("relevance", 70))
-    accuracy = int(analysis.get("technical_accuracy", 70))
-    clarity = int(analysis.get("clarity", 70))
-    completeness = int(analysis.get("completeness", 70))
+    relevance = int(analysis.get("relevance", 75))
+    accuracy = int(analysis.get("technical_accuracy", 75))
+    clarity = int(analysis.get("clarity", 75))
+    completeness = int(analysis.get("completeness", 75))
     final_score = int(accuracy * 0.40 + relevance * 0.30 + completeness * 0.20 + clarity * 0.10)
     final_score = max(0, min(100, final_score))
 
-    # Determine next topic tracking
+    # Determine next topic tracking and topic progression
     switch_topic = result.get("switch_topic", False)
     new_topic = result.get("current_topic", current_topic)
     next_turns = 1 if switch_topic or new_topic != current_topic else (turns_on_topic + 1)
 
-    # Keep difficulty friendly & accessible (college student level)
+    # Update topics_discussed
+    updated_topics = list(topics_list)
+    for topic_item in result.get("detected_topics", []):
+        if topic_item and topic_item not in updated_topics:
+            updated_topics.append(topic_item)
+    if new_topic and new_topic not in updated_topics:
+        updated_topics.append(new_topic)
+
     behavior = result.get("candidate_behavior", "satisfactory")
-    next_diff = "easy"
+    next_diff = result.get("difficulty", current_difficulty)
 
     return {
-        # Evaluation component (compatible with existing reporting & DB)
+        # Evaluation component (compatible with reporting & DB)
         "evaluation": {
             "score": final_score,
             "final_score": final_score,
@@ -318,12 +349,12 @@ async def process_candidate_answer_and_next_question(
             "correctness": accuracy,
             "technical_depth": completeness,
             "clarity": clarity,
-            "feedback": result.get("feedback", "Good response."),
+            "feedback": result.get("feedback", "Good explanation."),
             "strengths": result.get("detected_topics", []),
             "improvements": result.get("missing_concepts", []),
         },
         "score": final_score,
-        "feedback": result.get("feedback", "Good response."),
+        "feedback": result.get("feedback", "Good explanation."),
         "detected_topics": result.get("detected_topics", []),
         "missing_concepts": result.get("missing_concepts", []),
         "candidate_behavior": behavior,
@@ -334,5 +365,6 @@ async def process_candidate_answer_and_next_question(
         "difficulty": next_diff,
         "current_topic": new_topic,
         "turns_on_topic": next_turns,
+        "topics_discussed": updated_topics,
         "tts_text": result["next_question"],
     }

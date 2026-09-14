@@ -7,6 +7,7 @@ All prompts:
 - Are reusable functions with typed parameters
 """
 
+import json
 from typing import List, Optional
 
 
@@ -224,60 +225,35 @@ def resume_opening_question_prompt(
     """
     Generate the very FIRST question directly based on the candidate's resume.
     Strictly forbids generic openers like 'Tell me about yourself'.
-    Picks a real project or internship from the resume to open with.
+    Directly references an actual project or experience from the resume.
     """
     candidate_name = resume_context.get("candidate_name", "the candidate")
     projects = resume_context.get("projects", [])
     experience = resume_context.get("experience", [])
     skills = resume_context.get("skills", {})
 
-    project_lines = []
-    for p in projects:
-        techs = ", ".join(p.get("technologies", [])) if p.get("technologies") else "tech stack"
-        desc = p.get("description", "")
-        project_lines.append(f"• Project: {p.get('name')} | Technologies: {techs} | Description: {desc}")
-    project_summary = "\n".join(project_lines) if project_lines else "No specific projects found."
-
-    exp_lines = []
-    for e in experience:
-        comp = e.get("company") or e.get("role_or_company", "Organization")
-        role_t = e.get("role", "Role")
-        techs = ", ".join(e.get("technologies", [])) if e.get("technologies") else ""
-        exp_lines.append(f"• {role_t} at {comp} | Tech: {techs}")
-    exp_summary = "\n".join(exp_lines) if exp_lines else "No work experience listed."
-
-    all_skills = ", ".join(skills.get("all_skills", [])) if isinstance(skills, dict) else ""
+    # Full structured resume context representation
+    resume_context_json = json.dumps(resume_context, indent=2, default=str)
 
     return f"""/nothink
-You are a senior technical interviewer opening an interview for the {role} position.
+You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).
 
-Candidate: {candidate_name}
-Experience Level: {experience_level}
-Interview Type: {interview_type}
+CANDIDATE'S FULL STRUCTURED RESUME CONTEXT:
+{resume_context_json}
 
-Candidate's Resume Highlights:
-Key Skills: {all_skills}
+CRITICAL RULES FOR FIRST QUESTION:
+1. STRICTLY FORBIDDEN: NEVER ask generic questions like "Tell me about yourself", "What are your strengths?", or "Walk me through your resume."
+2. DIRECT RESUME CITATION: Your opening question MUST directly reference a SPECIFIC project, system, or work experience from their resume, including the actual technologies used.
+3. ARCHITECTURE & CONTRIBUTION: Ask the candidate to explain the architecture of that specific project and what parts they personally designed and built.
+4. REQUIRED FORMAT EXAMPLE:
+   "I noticed you built an [Project Name] using [Tech 1, Tech 2, and Tech 3]. Can you explain its architecture and your personal contribution to it?"
+5. Keep the tone professional, welcoming, and directly focused on their technical work.
 
-Projects on Resume:
-{project_summary}
-
-Work Experience / Internships on Resume:
-{exp_summary}
-
-CRITICAL RULES (EASY / FRESHER LEVEL):
-1. The candidate is a college student / fresher. Keep questions at an EASY, BEGINNER-FRIENDLY, and ENCOURAGING level.
-2. DO NOT ask generic questions like "Tell me about yourself" or "What are your strengths?"
-3. DO NOT ask complex architecture, enterprise system design, microservices, or high-scale distributed systems questions.
-4. Your opening question MUST directly reference a SPECIFIC project or internship from their resume, asking in simple words what it does and what they worked on.
-5. Example of required easy question format:
-   "I noticed on your resume that you built [Project Name] using [Tech 1]. In simple words, can you explain what this project does and what specific parts you personally developed?"
-6. Keep the tone friendly, clear, and conversational.
-
-Output ONLY a JSON object in this exact format:
+Output ONLY a valid JSON object in this exact format:
 {{
-  "question": "Your easy, friendly project-based opening question here",
-  "target_topic": "The exact project or technology you are asking about",
-  "reasoning": "Why this opening question was chosen"
+  "question": "I noticed you built [Project Name] using [Technologies]. Can you explain the architecture and your personal contribution?",
+  "target_topic": "The exact project name or primary topic",
+  "reasoning": "Why this opening question was chosen based on the resume"
 }}"""
 
 
@@ -301,72 +277,73 @@ def counter_question_analysis_prompt(
     turns_on_topic: int,
     conversation_history: List[dict],
     resume_context: dict,
-    current_difficulty: str = "easy",
+    topics_discussed: Optional[List[str]] = None,
+    current_difficulty: str = "medium",
 ) -> str:
     """
     Core dynamic interview intelligence prompt.
     Analyzes the candidate's answer, checks technical accuracy, evaluates missing concepts,
-    detects weak vs strong answers, and formulates a direct, EASY, student-friendly COUNTER QUESTION.
+    detects claims made, and formulates a direct, connected COUNTER-QUESTION or DEEPER FOLLOW-UP.
     """
     candidate_name = resume_context.get("candidate_name", "Candidate")
-    projects = resume_context.get("projects", [])
-    skills = resume_context.get("skills", {})
-    all_skills = ", ".join(skills.get("all_skills", [])) if isinstance(skills, dict) else ""
+    full_resume_json = json.dumps(resume_context, indent=2, default=str)
 
     # Format history turns
     history_lines = []
-    for turn in conversation_history[-4:]:
-        q = turn.get("question", "")
-        a = turn.get("answer", "")[:180]
-        history_lines.append(f"Interviewer: {q}")
-        history_lines.append(f"Candidate: {a}")
-    history_block = "\n".join(history_lines) if history_lines else "(First answer in interview)"
+    if conversation_history:
+        for idx, turn in enumerate(conversation_history, 1):
+            q = turn.get("question", "")
+            a = turn.get("answer", "")
+            history_lines.append(f"Turn {idx}:\n  Interviewer: {q}\n  Candidate: {a}")
+    history_block = "\n".join(history_lines) if history_lines else "(No prior turns — this is the first answer)"
 
-    # Candidate projects summary for topic transition if current topic exhausted
-    remaining_projects = [p.get("name") for p in projects if p.get("name") and p.get("name").lower() not in current_topic.lower()]
-    next_topic_candidate = remaining_projects[0] if remaining_projects else "core programming fundamentals"
+    # Format topics discussed
+    topics_list = topics_discussed or [current_topic]
+    topics_block = "\n".join(f"- {t}" for t in topics_list) if topics_list else f"- {current_topic}"
 
     return f"""/nothink
-You are a friendly, encouraging technical interviewer interviewing {candidate_name} (a college student / fresher) for a {role} role.
+You are an expert technical interviewer conducting an interview for the {role} position.
 
-INTERVIEW STATE:
-- Current Topic Being Explored: {current_topic}
-- Consecutive Turns on This Topic: {turns_on_topic}
-- Target Difficulty Level: EASY / FRESHER / STUDENT-FRIENDLY
-- Candidate Claimed Skills: {all_skills}
-- Next Potential Resume Topic (if switching): {next_topic_candidate}
+CANDIDATE'S FULL STRUCTURED RESUME CONTEXT:
+{full_resume_json}
 
-RECENT CONVERSATION:
+TOPICS ALREADY DISCUSSED (DO NOT REPEAT UNLESS DRILLING DEEPER):
+{topics_block}
+
+PREVIOUS CONVERSATION HISTORY:
 {history_block}
 
 MOST RECENT QUESTION ASKED:
 "{prev_question}"
 
-CANDIDATE'S ACTUAL ANSWER:
+CANDIDATE'S LATEST ANSWER:
 "{candidate_answer}"
 
-CRITICAL DIFFICULTY INSTRUCTIONS (KEEP QUESTIONS EASY & PRACTICAL):
-1. The candidate is a college student / fresher. All questions MUST be at an EASY, PRACTICAL, AND ACCESSIBLE level.
-2. STRICTLY AVOID:
-   - High-level enterprise architecture, microservices, or distributed systems.
-   - 10x scalability, high-concurrency traffic bottlenecks, or cluster management.
-   - Intimidating mathematical proofs or complex theoretical formulas.
-3. INSTEAD, ASK SIMPLE, DIRECT, PRACTICAL QUESTIONS:
-   - "How did you connect your frontend to your backend in this project?"
-   - "What is the purpose of [Technology/Library mentioned] in your application?"
-   - "Can you explain step-by-step what happens when a user uses this feature?"
-   - "What was a simple bug or error you ran into while coding this, and how did you solve it?"
-   - "How did you store or retrieve data from the database?"
-4. IF THE ANSWER IS STRONG:
-   Acknowledge it nicely and ask another simple, practical feature or testing question. DO NOT jump to 10x scale or complex enterprise design.
-5. IF THE CANDIDATE SAYS "I don't know" OR GIVES A VAGUE ANSWER:
-   Be very warm and supportive:
-   "No problem at all! Let's keep it simple: [ask a very basic question about their project or feature]"
-6. TOPIC PROGRESSION:
-   If you have spent 2-3 turns on {current_topic}, you can smoothly transition to another project: {next_topic_candidate}.
-   Otherwise, ask an easy follow-up on {current_topic}.
+CURRENT TOPIC: {current_topic} (Turn {turns_on_topic} on this topic)
 
-Output ONLY valid JSON in this exact structure, with no markdown code blocks:
+CRITICAL CONVERSATIONAL DEPENDENCY & COUNTER-QUESTIONING RULES:
+1. GENERATE NEXT QUESTION BASED PRIMARILY ON THE CANDIDATE'S LATEST ANSWER:
+   - Carefully inspect what the candidate JUST said in their latest answer: "{candidate_answer}".
+   - Identify the explicit technical claims, choices, frameworks, or mechanisms they just named.
+   - You MUST continue the exact same conversational thread and drill into their specific answer:
+     • If candidate stated: "I used React for the frontend and FastAPI for the backend."
+       → You MUST ask a counter-question on their choice: "Why did you choose FastAPI for the backend?" (or why React for frontend).
+     • If candidate stated: "Because it is fast and supports asynchronous APIs."
+       → You MUST ask a deeper follow-up exploring that exact claim: "You mentioned asynchronous APIs. Where did you use asynchronous processing in your project, and what benefit did it provide?"
+     • If candidate stated: "I used it for real-time communication."
+       → You MUST drill deeper into that exact mechanism: "How did you implement real-time communication in your application, and why did you choose WebSockets?"
+2. STRICTLY FORBIDDEN — NO GENERIC RESET QUESTIONS:
+   - Do NOT ask generic reset questions like "What does your project do?", "Can you explain what the system does?", or "What are your strengths?" when the candidate has already answered.
+   - Do NOT ignore what the candidate just said. Every follow-up question must be an organic consequence of their previous response.
+3. DRILL PROGRESSIVELY DEEPER:
+   - Turn 1: High-level architecture / components.
+   - Turn 2: Counter-question on specific technology or design choice they claimed.
+   - Turn 3: Deep-dive into the underlying mechanism, concurrency, performance, or trade-offs they brought up.
+4. HONEST EVALUATION:
+   - Score the candidate's latest answer fairly based on relevance, technical accuracy, clarity, and completeness (0-100).
+   - If the answer is direct and factual, score it accurately (do not penalize concise answers if technically sound).
+
+Output ONLY valid JSON in this exact structure, with no markdown fences:
 {{
   "answer_analysis": {{
     "relevance": <integer 0-100>,
@@ -375,12 +352,12 @@ Output ONLY valid JSON in this exact structure, with no markdown code blocks:
     "completeness": <integer 0-100>
   }},
   "candidate_behavior": "strong" | "satisfactory" | "weak" | "vague" | "dont_know",
-  "detected_topics": ["topic 1", "topic 2"],
-  "missing_concepts": ["concept 1", "concept 2"],
-  "feedback": "Short 1-2 sentence friendly, encouraging spoken feedback acknowledging what they said.",
-  "next_question": "Your easy, friendly, practical counter-question here",
-  "question_type": "counter_question" | "deep_dive" | "clarification" | "pivot_angle" | "new_topic",
-  "difficulty": "easy",
+  "detected_topics": ["topic or technology 1", "topic or technology 2"],
+  "missing_concepts": ["concept to explore further"],
+  "feedback": "1-2 sentence spoken interviewer feedback acknowledging what the candidate just said.",
+  "next_question": "Your dynamic counter-question or deeper follow-up directly drilling into their latest answer",
+  "question_type": "counter_question" | "deep_dive" | "clarification",
+  "difficulty": "{current_difficulty}",
   "current_topic": "{current_topic}",
   "switch_topic": false
 }}"""

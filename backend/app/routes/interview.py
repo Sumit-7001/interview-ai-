@@ -73,7 +73,8 @@ async def create_interview(
         "interview_type": payload.interview_type,
         "current_topic": current_topic,
         "turns_on_topic": 1,
-        "difficulty": "easy",
+        "topics_discussed": [current_topic],
+        "difficulty": "medium",
         "status": "active",
         "created_at": datetime.utcnow(),
         "completed_at": None,
@@ -166,13 +167,20 @@ async def answer_question(
     resume_context = await get_or_create_resume_context(current_user["id"], db)
     current_topic = interview.get("current_topic", "Project Overview")
     turns_on_topic = interview.get("turns_on_topic", 1)
-    current_diff = interview.get("difficulty", "easy")
+    current_diff = interview.get("difficulty", "medium")
+    topics_discussed = interview.get("topics_discussed") or []
 
     # Build history from previously answered questions
     history = []
     for q in interview.get("questions", []):
         if q.get("answer_text") and q.get("id") != question_id:
-            history.append({"question": q.get("question_text", ""), "answer": q.get("answer_text", "")})
+            history.append({
+                "question": q.get("question_text", ""),
+                "answer": q.get("answer_text", ""),
+                "score": q.get("evaluation", {}).get("score", 75) if isinstance(q.get("evaluation"), dict) else 75,
+                "detected_topics": q.get("evaluation", {}).get("strengths", []) if isinstance(q.get("evaluation"), dict) else [],
+                "missing_concepts": q.get("evaluation", {}).get("improvements", []) if isinstance(q.get("evaluation"), dict) else [],
+            })
 
     result = await process_candidate_answer_and_next_question(
         prev_question=target_q["question_text"],
@@ -183,10 +191,12 @@ async def answer_question(
         turns_on_topic=turns_on_topic,
         conversation_history=history,
         resume_context=resume_context,
+        topics_discussed=topics_discussed,
         current_difficulty=current_diff,
         question_number=question_id,
     )
     evaluation = result["evaluation"]
+    updated_topics = result.get("topics_discussed", topics_discussed)
     
     # Update question details in MongoDB
     update_data = {
@@ -200,7 +210,21 @@ async def answer_question(
     
     await db["interviews"].update_one(
         {"_id": ObjectId(id), "questions.id": question_id},
-        {"$set": update_data}
+        {
+            "$set": update_data
+        }
+    )
+
+    await db["interviews"].update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "topics_discussed": updated_topics,
+                "current_topic": result["current_topic"],
+                "turns_on_topic": result["turns_on_topic"],
+                "difficulty": result["difficulty"],
+            }
+        }
     )
 
     # Append next counter-question dynamically if within limit
@@ -226,6 +250,7 @@ async def answer_question(
                     "current_topic": result["current_topic"],
                     "turns_on_topic": result["turns_on_topic"],
                     "difficulty": result["difficulty"],
+                    "topics_discussed": updated_topics,
                 }
             }
         )
