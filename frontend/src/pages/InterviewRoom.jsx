@@ -17,37 +17,154 @@ import {
   ChevronDown,
   ChevronUp,
   Brain,
-  CheckCircle2
+  CheckCircle2,
+  Settings2,
+  Play,
+  Check,
+  RotateCcw,
+  Sliders,
+  X
 } from 'lucide-react';
 import API from '../services/api';
 import CameraPanel from '../components/CameraPanel';
 import Sidebar from '../components/Sidebar';
 import { useAlert } from '../context/AlertContext';
 
-// ── Text-to-Speech helper using Web Speech API ──────────────────────────────
-const speakText = (text, { rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) => {
-  if (!window.speechSynthesis || !text) return;
-  window.speechSynthesis.cancel(); // Stop any ongoing speech
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = rate;
-  utter.pitch = pitch;
-  utter.volume = volume;
-  utter.lang = 'en-US';
-  // Prefer a natural voice if available
+// ── Soft Gemini-Style Text-to-Speech Helper (Web Speech API) ─────────────────
+let activeUtterance = null;
+
+export const getSoftGeminiVoice = (overrideVoiceName = null, ignoreSaved = false) => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v =>
-    v.name.includes('Google US English') ||
-    v.name.includes('Samantha') ||
-    v.name.includes('Alex') ||
-    (v.lang === 'en-US' && !v.name.includes('Google'))
+  if (!voices || voices.length === 0) return null;
+
+  // 1. If user explicitly provided a voice
+  if (overrideVoiceName) {
+    const userChoice = voices.find(v => v.name === overrideVoiceName);
+    if (userChoice) return userChoice;
+  }
+
+  // If saved voice exists and we are not ignoring it, check if it's not a known robotic voice
+  if (!ignoreSaved) {
+    const saved = localStorage.getItem('ai_selected_voice');
+    const isRobotic = saved && (
+      saved.toLowerCase().includes('daniel') ||
+      saved.toLowerCase().includes('albert') ||
+      saved.toLowerCase().includes('fred') ||
+      saved.toLowerCase().includes('bad news') ||
+      saved.toLowerCase().includes('whisper') ||
+      saved.toLowerCase().includes('zarvox')
+    );
+    if (saved && !isRobotic) {
+      const savedChoice = voices.find(v => v.name === saved);
+      if (savedChoice) return savedChoice;
+    }
+  }
+
+  // 2. High-priority soft, warm, natural voices (macOS & Browser neural voices)
+  const softVoiceKeywords = [
+    // Soft Google / Natural voices (Chrome / Edge)
+    'Google UK English Female',
+    'Google US English',
+    'Microsoft Jenny Online (Natural)',
+    'Microsoft Aria Online (Natural)',
+    // macOS Softest, gentlest voices installed on Mac
+    'Karen',      // Australian, warm, soft, natural conversational
+    'Moira',      // Irish, very gentle, calm & soothing
+    'Sandy',      // US, friendly & natural
+    'Shelley',    // US, soft female
+    'Tessa',      // South African, soft & melodic
+    'Samantha',   // US Siri clear conversational
+    'Siri',
+    'Serena',
+    'Ava',
+    'Zoe',
+    'Allison',
+    'Susan',
+  ];
+
+  for (const keyword of softVoiceKeywords) {
+    const match = voices.find(v => v.name.toLowerCase().includes(keyword.toLowerCase()));
+    if (match) return match;
+  }
+
+  // 3. Any English voice that is NOT an old harsh robotic legacy voice
+  const roboticBlacklist = [
+    'daniel', 'alex', 'fred', 'albert', 'junior', 'bad news', 'bahh', 'bells',
+    'boing', 'cellos', 'deranged', 'good news', 'hysterical', 'pipe organ',
+    'trinoids', 'whisper', 'zarvox', 'ralph', 'wobble', 'jester'
+  ];
+  const fallbackEnglish = voices.find(v =>
+    (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB') || v.lang.startsWith('en')) &&
+    !roboticBlacklist.some(bad => v.name.toLowerCase().includes(bad))
   );
-  if (preferred) utter.voice = preferred;
+
+  return fallbackEnglish || voices[0] || null;
+};
+
+export const cleanTextForSpeech = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/[*_#`~]/g, '')           // Strip markdown formatting symbols
+    .replace(/https?:\/\/\S+/g, '')     // Strip links
+    .replace(/\s+/g, ' ')              // Normalize spacing
+    .trim();
+};
+
+export const speakText = (text, { voiceName = null, rate = null, pitch = null, volume = 0.95 } = {}) => {
+  if (!window.speechSynthesis || !text) return null;
+
+  // Fix Chrome/Safari suspension bug
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    window.speechSynthesis.cancel();
+  } catch (e) {
+    console.warn("SpeechSynthesis resume/cancel warning:", e);
+  }
+
+  const clean = cleanTextForSpeech(text);
+  const utter = new SpeechSynthesisUtterance(clean);
+
+  // Rate & pitch from params, localStorage or soft defaults
+  const userRate = rate !== null ? rate : (parseFloat(localStorage.getItem('ai_voice_rate')) || 0.92);
+  const userPitch = pitch !== null ? pitch : (parseFloat(localStorage.getItem('ai_voice_pitch')) || 1.0);
+
+  // Soft, warm, conversational Gemini-style pacing and pitch
+  utter.rate = userRate;     // 0.92: calm, thoughtful, conversational cadence
+  utter.pitch = userPitch;   // 1.0: warm, natural conversational pitch
+  utter.volume = volume;     // 0.95: soft and gentle delivery
+  utter.lang = 'en-US';
+
+  const softVoice = getSoftGeminiVoice(voiceName);
+  if (softVoice) {
+    utter.voice = softVoice;
+  }
+
+  // Preserve global reference to prevent Chrome garbage-collection speech cutoff bug
+  window._activeUtterance = utter;
+  activeUtterance = utter;
+
+  utter.onend = () => {
+    window._activeUtterance = null;
+    activeUtterance = null;
+  };
+  utter.onerror = () => {
+    window._activeUtterance = null;
+    activeUtterance = null;
+  };
+
   window.speechSynthesis.speak(utter);
   return utter;
 };
 
-const stopSpeech = () => {
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+export const stopSpeech = () => {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+  }
 };
 
 // Convert Web Audio API decoded AudioBuffer to standard 16kHz 16-bit Mono WAV Blob
@@ -173,9 +290,93 @@ const InterviewRoom = () => {
   const [conversationLog, setConversationLog] = useState([]);
   const [showLog, setShowLog] = useState(false);
 
-  // TTS
+  // TTS & Voice Customization
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState(() => localStorage.getItem('ai_selected_voice') || '');
+  const [voiceRate, setVoiceRate] = useState(() => parseFloat(localStorage.getItem('ai_voice_rate')) || 0.92);
+  const [voicePitch, setVoicePitch] = useState(() => parseFloat(localStorage.getItem('ai_voice_pitch')) || 1.0);
+  const [testingVoice, setTestingVoice] = useState(false);
+
+  // Load and cache voices from browser
+  useEffect(() => {
+    const updateVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const vList = window.speechSynthesis.getVoices() || [];
+        if (vList.length > 0) {
+          setAvailableVoices(vList);
+          const savedVoice = localStorage.getItem('ai_selected_voice');
+          const isRobotic = !savedVoice ||
+            savedVoice.toLowerCase().includes('daniel') ||
+            savedVoice.toLowerCase().includes('albert') ||
+            savedVoice.toLowerCase().includes('fred');
+
+          if (isRobotic) {
+            const best = getSoftGeminiVoice(null, true);
+            if (best) {
+              setSelectedVoiceName(best.name);
+              localStorage.setItem('ai_selected_voice', best.name);
+            }
+          } else {
+            setSelectedVoiceName(savedVoice);
+          }
+        }
+      }
+    };
+
+    updateVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+
+    const unlockSpeech = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+    };
+    window.addEventListener('click', unlockSpeech, { once: true });
+    window.addEventListener('keydown', unlockSpeech, { once: true });
+
+    return () => {
+      window.removeEventListener('click', unlockSpeech);
+      window.removeEventListener('keydown', unlockSpeech);
+    };
+  }, []);
+
+  const handleTestVoice = (overrideName = null, overrideRate = null, overridePitch = null) => {
+    const vName = overrideName || selectedVoiceName;
+    const r = overrideRate !== null ? overrideRate : voiceRate;
+    const p = overridePitch !== null ? overridePitch : voicePitch;
+    stopSpeech();
+    setTestingVoice(true);
+    const utter = speakText(
+      "Hello! I am your AI interviewer. I will ask you questions in this soft, conversational voice.",
+      { voiceName: vName, rate: r, pitch: p }
+    );
+    if (utter) {
+      utter.onend = () => setTestingVoice(false);
+      utter.onerror = () => setTestingVoice(false);
+    } else {
+      setTestingVoice(false);
+    }
+  };
+
+  const handleReplayQuestion = () => {
+    const currentQText = wsMode ? dynamicQuestion?.question : interview?.questions?.[currentQIndex]?.question_text;
+    if (!currentQText) return;
+    setAiSpeaking(true);
+    const utter = speakText(currentQText, { voiceName: selectedVoiceName, rate: voiceRate, pitch: voicePitch });
+    if (utter) {
+      utter.onend = () => setAiSpeaking(false);
+      utter.onerror = () => setAiSpeaking(false);
+    } else {
+      setAiSpeaking(false);
+    }
+  };
 
   // REST mode (fallback)
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -359,7 +560,11 @@ const InterviewRoom = () => {
       // TTS — AI speaks the question
       if (ttsEnabled) {
         setAiSpeaking(true);
-        const utter = speakText(msg.tts_text || msg.question);
+        const utter = speakText(msg.tts_text || msg.question, {
+          voiceName: selectedVoiceName,
+          rate: voiceRate,
+          pitch: voicePitch,
+        });
         if (utter) {
           utter.onend = () => setAiSpeaking(false);
           utter.onerror = () => setAiSpeaking(false);
@@ -412,7 +617,7 @@ const InterviewRoom = () => {
       setTimeout(() => setAiError(null), 6000);
       return;
     }
-  }, [ttsEnabled, dynamicQuestion, navigate]);
+  }, [ttsEnabled, dynamicQuestion, navigate, selectedVoiceName, voiceRate, voicePitch]);
 
   // Update ws message handler when ttsEnabled or dynamicQuestion changes
   useEffect(() => {
@@ -454,6 +659,20 @@ const InterviewRoom = () => {
       connectWebSocket();
     }
   }, [id, loading, interview, connectWebSocket]);
+
+  // ── CameraPanel Callbacks ─────────────────────────────────────────────────
+  // Called by CameraPanel every ~1.5s during recording with real backend values.
+  const handleEmotionUpdate = useCallback((dominantLabel, probs) => {
+    if (probs && typeof probs === 'object' && Object.keys(probs).length > 0) {
+      setEmotionsHistory(prev => [...prev, probs]);
+    }
+  }, []);
+
+  const handleEyeContactUpdate = useCallback((score) => {
+    if (typeof score === 'number' && !isNaN(score)) {
+      setEyeContactHistory(prev => [...prev, score]);
+    }
+  }, []);
 
   // ── Recording ────────────────────────────────────────────────────────────
   const startAnswer = async () => {
@@ -665,8 +884,6 @@ const InterviewRoom = () => {
     }
   };
 
-  const handleEmotionUpdate = (dominant, probabilities) => setEmotionsHistory(prev => [...prev, probabilities]);
-  const handleEyeContactUpdate = (score) => setEyeContactHistory(prev => [...prev, score]);
 
   const submitTypedAnswer = () => {
     if (!typedAnswer.trim()) return;
@@ -922,11 +1139,21 @@ const InterviewRoom = () => {
           {/* TTS Toggle */}
           <button
             onClick={() => { setTtsEnabled(!ttsEnabled); stopSpeech(); setAiSpeaking(false); }}
-            className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${ttsEnabled ? 'bg-primary/10 border-primary/20 text-primary-light' : 'bg-gray-700/50 border-gray-600/30 text-gray-500'}`}
-            title="Toggle AI voice"
+            className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${ttsEnabled ? 'bg-primary/10 border-primary/20 text-primary-light shadow-[0_0_12px_rgba(124,58,237,0.15)]' : 'bg-gray-700/50 border-gray-600/30 text-gray-500'}`}
+            title="Toggle Soft Gemini-Style AI Voice"
           >
             {ttsEnabled ? <Volume2 size={10} /> : <VolumeX size={10} />}
-            {ttsEnabled ? 'Voice On' : 'Voice Off'}
+            {ttsEnabled ? 'Gemini Voice' : 'Voice Off'}
+          </button>
+
+          {/* Voice Settings */}
+          <button
+            onClick={() => setShowVoiceModal(true)}
+            className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border border-midnight-border bg-midnight hover:bg-midnight-light text-gray-300 hover:text-white transition-all shadow-sm"
+            title="Configure AI Voice Settings"
+          >
+            <Sliders size={10} className="text-primary-light" />
+            <span>Voice Settings</span>
           </button>
 
           {/* Question progress (REST mode) */}
@@ -1092,9 +1319,29 @@ const InterviewRoom = () => {
                   <span className="text-sm text-gray-400 animate-pulse">AI is analyzing answer & formulating counter-question...</span>
                 </div>
               ) : currentQ ? (
-                <h2 className="font-display font-extrabold text-lg md:text-xl text-white leading-relaxed">
-                  "{wsMode ? dynamicQuestion?.question : currentQ?.question_text}"
-                </h2>
+                <div className="mt-3">
+                  <h2 className="font-display font-extrabold text-lg md:text-xl text-white leading-relaxed">
+                    "{wsMode ? dynamicQuestion?.question : currentQ?.question_text}"
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <button
+                      onClick={handleReplayQuestion}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-light hover:text-white bg-primary/15 hover:bg-primary/25 border border-primary/30 px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow-sm"
+                      title="Replay this question aloud"
+                    >
+                      <Volume2 size={13} className={aiSpeaking ? 'animate-pulse text-primary-light' : ''} />
+                      <span>{aiSpeaking ? 'Speaking...' : '🔊 Replay Question'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowVoiceModal(true)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-400 hover:text-gray-200 transition-colors bg-midnight border border-midnight-border/70 hover:border-midnight-border px-2.5 py-1.5 rounded-xl"
+                      title="Configure AI Voice"
+                    >
+                      <Sliders size={11} className="text-primary-light" />
+                      <span>Voice: {selectedVoiceName ? selectedVoiceName.split(' ')[0] : 'Gemini Soft'}</span>
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="text-sm text-gray-500 mt-4">Waiting for AI to connect...</div>
               )}
@@ -1162,22 +1409,11 @@ const InterviewRoom = () => {
                     </div>
                   ) : (
                     <div className="w-full px-4 mt-2 text-left bg-midnight border border-midnight-border/50 rounded-lg p-3 text-xs">
-                      <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                        <span>{speechBlocked ? 'Recording Voice Audio (16kHz WAV)...' : 'Listening...'}</span>
+                        <span>Listening...</span>
                       </p>
-                      <p className="text-gray-300">
-                        {speechBlocked
-                          ? 'Speak clearly into your microphone. Your audio is recorded and will be transcribed by AI Whisper upon clicking Submit.'
-                          : 'Speak clearly into your microphone. Your spoken words will appear here live.'
-                        }
-                      </p>
-                    </div>
-                  )}
-                  {speechBlocked && (
-                    <div className="w-full px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-300 text-left leading-normal flex items-start gap-1.5">
-                      <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-400" />
-                      <span><b>Brave Browser Note:</b> Real-time speech preview is blocked by Brave shields, but your audio is captured and transcribed by AI Whisper on submit.</span>
+                      <p className="text-gray-400">Speak clearly into your microphone.</p>
                     </div>
                   )}
                   <button onClick={stopAnswer} className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-glow shadow-red-500/10">
@@ -1315,6 +1551,282 @@ const InterviewRoom = () => {
           </div>
         </div>
       </div>
+
+      {/* Voice Settings Modal */}
+      {showVoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-midnight-light border border-midnight-border rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-midnight-border/60">
+              <div className="flex items-center gap-2">
+                <Sliders size={18} className="text-primary-light" />
+                <h3 className="text-base font-bold text-white">AI Voice Settings</h3>
+              </div>
+              <button
+                onClick={() => { stopSpeech(); setTestingVoice(false); setShowVoiceModal(false); }}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-midnight transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 py-4">
+              {/* Presets */}
+              <div>
+                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-2">
+                  Quick Presets (Click to Preview)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Preset 1: Gemini Soft Karen */}
+                  <button
+                    onClick={() => {
+                      const soft = availableVoices.find(v => v.name.toLowerCase().includes('karen')) ||
+                                   availableVoices.find(v => v.name.toLowerCase().includes('google uk english female')) ||
+                                   availableVoices.find(v => v.name.toLowerCase().includes('moira')) ||
+                                   availableVoices[0];
+                      if (soft) {
+                        setSelectedVoiceName(soft.name);
+                        localStorage.setItem('ai_selected_voice', soft.name);
+                      }
+                      setVoiceRate(0.92);
+                      localStorage.setItem('ai_voice_rate', '0.92');
+                      setVoicePitch(1.0);
+                      localStorage.setItem('ai_voice_pitch', '1.0');
+                      handleTestVoice(soft ? soft.name : null, 0.92, 1.0);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all group ${
+                      selectedVoiceName.toLowerCase().includes('karen')
+                        ? 'border-primary bg-primary/20 shadow-[0_0_15px_rgba(124,58,237,0.25)]'
+                        : 'border-primary/40 bg-primary/10 hover:bg-primary/20'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-primary-light group-hover:text-white flex items-center justify-between">
+                      <span>✨ Gemini Soft (Karen)</span>
+                      {selectedVoiceName.toLowerCase().includes('karen') && <Check size={12} className="text-primary-light" />}
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">Warm, Gentle & Natural</div>
+                  </button>
+
+                  {/* Preset 2: Gentle Moira */}
+                  <button
+                    onClick={() => {
+                      const moira = availableVoices.find(v => v.name.toLowerCase().includes('moira')) ||
+                                    availableVoices.find(v => v.name.toLowerCase().includes('tessa')) ||
+                                    availableVoices[0];
+                      if (moira) {
+                        setSelectedVoiceName(moira.name);
+                        localStorage.setItem('ai_selected_voice', moira.name);
+                      }
+                      setVoiceRate(0.92);
+                      localStorage.setItem('ai_voice_rate', '0.92');
+                      setVoicePitch(1.0);
+                      localStorage.setItem('ai_voice_pitch', '1.0');
+                      handleTestVoice(moira ? moira.name : null, 0.92, 1.0);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all group ${
+                      selectedVoiceName.toLowerCase().includes('moira')
+                        ? 'border-cyan-400 bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
+                        : 'border-midnight-border bg-midnight hover:bg-midnight-light'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-cyan-300 group-hover:text-white flex items-center justify-between">
+                      <span>🌸 Melodic (Moira)</span>
+                      {selectedVoiceName.toLowerCase().includes('moira') && <Check size={12} className="text-cyan-300" />}
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">Soft, Calming & Polite</div>
+                  </button>
+
+                  {/* Preset 3: Clear Samantha */}
+                  <button
+                    onClick={() => {
+                      const sam = availableVoices.find(v => v.name.toLowerCase().includes('samantha')) ||
+                                  availableVoices.find(v => v.name.toLowerCase().includes('google us english')) ||
+                                  availableVoices[0];
+                      if (sam) {
+                        setSelectedVoiceName(sam.name);
+                        localStorage.setItem('ai_selected_voice', sam.name);
+                      }
+                      setVoiceRate(0.95);
+                      localStorage.setItem('ai_voice_rate', '0.95');
+                      setVoicePitch(1.0);
+                      localStorage.setItem('ai_voice_pitch', '1.0');
+                      handleTestVoice(sam ? sam.name : null, 0.95, 1.0);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all group ${
+                      selectedVoiceName.toLowerCase().includes('samantha')
+                        ? 'border-emerald-400 bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                        : 'border-midnight-border bg-midnight hover:bg-midnight-light'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-emerald-300 group-hover:text-white flex items-center justify-between">
+                      <span>🎙️ Conversational (Samantha)</span>
+                      {selectedVoiceName.toLowerCase().includes('samantha') && <Check size={12} className="text-emerald-300" />}
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">Clear US Conversational</div>
+                  </button>
+
+                  {/* Preset 4: Warm Sandy/Shelley */}
+                  <button
+                    onClick={() => {
+                      const warm = availableVoices.find(v => v.name.toLowerCase().includes('sandy')) ||
+                                   availableVoices.find(v => v.name.toLowerCase().includes('shelley')) ||
+                                   availableVoices.find(v => v.name.toLowerCase().includes('tessa')) ||
+                                   availableVoices[0];
+                      if (warm) {
+                        setSelectedVoiceName(warm.name);
+                        localStorage.setItem('ai_selected_voice', warm.name);
+                      }
+                      setVoiceRate(0.92);
+                      localStorage.setItem('ai_voice_rate', '0.92');
+                      setVoicePitch(1.05);
+                      localStorage.setItem('ai_voice_pitch', '1.05');
+                      handleTestVoice(warm ? warm.name : null, 0.92, 1.05);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all group ${
+                      selectedVoiceName.toLowerCase().includes('sandy') || selectedVoiceName.toLowerCase().includes('shelley')
+                        ? 'border-amber-400 bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                        : 'border-midnight-border bg-midnight hover:bg-midnight-light'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-amber-300 group-hover:text-white flex items-center justify-between">
+                      <span>🌼 Warm (Sandy/Shelley)</span>
+                      {(selectedVoiceName.toLowerCase().includes('sandy') || selectedVoiceName.toLowerCase().includes('shelley')) && <Check size={12} className="text-amber-300" />}
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">Friendly & Engaging</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Categorized Voice Dropdown */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                    Select Voice (System Voices)
+                  </label>
+                  <span className="text-[10px] text-primary-light font-mono">
+                    {availableVoices.filter(v => v.lang && v.lang.startsWith('en')).length} English voices
+                  </span>
+                </div>
+                <select
+                  value={selectedVoiceName}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    setSelectedVoiceName(chosen);
+                    localStorage.setItem('ai_selected_voice', chosen);
+                    handleTestVoice(chosen);
+                  }}
+                  className="w-full bg-midnight border border-midnight-border rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-primary/60"
+                >
+                  <optgroup label="🌟 Recommended English Voices (Gemini Style)">
+                    {availableVoices
+                      .filter(v => v.lang && v.lang.startsWith('en'))
+                      .map((v, idx) => (
+                        <option key={`en-voice-${v.name}-${v.lang}-${idx}`} value={v.name}>
+                          {v.name} ({v.lang}) {
+                            v.name.includes('Karen') ? '★ Recommended: Gemini Soft' :
+                            v.name.includes('Moira') ? '★ Recommended: Melodic Gentle' :
+                            v.name.includes('Sandy') || v.name.includes('Shelley') ? '★ Natural Warm' :
+                            v.name.includes('Samantha') ? '★ Clear Conversational' :
+                            v.name.includes('Tessa') ? '★ Soft Melodic' : ''
+                          }
+                        </option>
+                      ))}
+                  </optgroup>
+                  {availableVoices.some(v => !v.lang || !v.lang.startsWith('en')) && (
+                    <optgroup label="🌐 Other Voices">
+                      {availableVoices
+                        .filter(v => !v.lang || !v.lang.startsWith('en'))
+                        .map((v, idx) => (
+                          <option key={`other-voice-${v.name}-${v.lang}-${idx}`} value={v.name}>
+                            {v.name} ({v.lang})
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {/* Speed / Rate slider */}
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-gray-400">Speaking Speed:</span>
+                  <span className="font-mono text-primary-light font-semibold">{voiceRate.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.75"
+                  max="1.25"
+                  step="0.05"
+                  value={voiceRate}
+                  onChange={(e) => {
+                    const r = parseFloat(e.target.value);
+                    setVoiceRate(r);
+                    localStorage.setItem('ai_voice_rate', r);
+                  }}
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                  <span>Slow & Gentle (0.75x)</span>
+                  <span>Conversational (0.92x)</span>
+                  <span>Fast (1.25x)</span>
+                </div>
+              </div>
+
+              {/* Pitch slider */}
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-gray-400">Voice Pitch:</span>
+                  <span className="font-mono text-primary-light font-semibold">{voicePitch.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.80"
+                  max="1.20"
+                  step="0.05"
+                  value={voicePitch}
+                  onChange={(e) => {
+                    const p = parseFloat(e.target.value);
+                    setVoicePitch(p);
+                    localStorage.setItem('ai_voice_pitch', p);
+                  }}
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                  <span>Deeper Tone (0.80)</span>
+                  <span>Natural (1.00)</span>
+                  <span>Higher Tone (1.20)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Test & Action Buttons */}
+            <div className="flex items-center gap-2.5 pt-3 border-t border-midnight-border/60">
+              <button
+                onClick={() => handleTestVoice()}
+                disabled={testingVoice}
+                className="flex-1 py-2.5 px-3 bg-midnight hover:bg-midnight-light border border-primary/40 text-primary-light hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+              >
+                <Play size={13} className={testingVoice ? 'animate-spin' : ''} />
+                <span>{testingVoice ? 'Speaking...' : '▶ Test Voice'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  stopSpeech();
+                  setTestingVoice(false);
+                  localStorage.setItem('ai_selected_voice', selectedVoiceName);
+                  localStorage.setItem('ai_voice_rate', voiceRate);
+                  localStorage.setItem('ai_voice_pitch', voicePitch);
+                  setShowVoiceModal(false);
+                }}
+                className="flex-1 py-2.5 px-3 bg-gradient-to-r from-primary to-primary-light hover:from-primary-dark hover:to-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-glow transition-all"
+              >
+                <Check size={14} />
+                <span>Save & Apply</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

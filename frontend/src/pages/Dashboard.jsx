@@ -31,9 +31,6 @@ import { useAlert } from '../context/AlertContext';
 import Sidebar from '../components/Sidebar';
 import DashboardCard from '../components/DashboardCard';
 import Modal from '../components/Modal';
-import AIStatusPanel from '../components/AIStatusPanel';
-import DailyChallengeCard from '../components/DailyChallengeCard';
-import HardwareCalibrator from '../components/HardwareCalibrator';
 import API from '../services/api';
 import { 
   BarChart, 
@@ -169,34 +166,34 @@ const Dashboard = () => {
     { 
       title: "Completed", 
       value: numCompleted, 
-      icon: CheckCircle2, 
-      description: numCompleted > 0 ? "Total rounds taken" : "Ready for round 1",
+      icon: Award, 
+      description: "Total mock sessions",
       trend: numCompleted > 0 ? `${numCompleted} finished` : "Start today",
       trendType: numCompleted > 0 ? "up" : "neutral"
     },
     { 
       title: "Avg Score", 
       value: numCompleted ? `${avgScore}/100` : "—", 
-      icon: Award, 
-      description: numCompleted ? "Overall practice rating" : "Target: 80+",
-      trend: avgScore >= 75 ? "Strong" : avgScore > 0 ? "Developing" : "Target: 80+",
+      icon: TrendingUp, 
+      description: "Overall evaluation",
+      trend: avgScore >= 75 ? "Strong" : avgScore > 0 ? "In Progress" : "Target: 80+",
       trendType: avgScore >= 75 ? "up" : "neutral"
     },
     { 
-      title: "Technical", 
-      value: numCompleted ? `${getAvgMetric('technical')}%` : "—", 
-      icon: Brain, 
-      description: numCompleted ? "Coding & architecture" : "Algorithms & logic",
-      trend: numCompleted ? "Verified" : "Pending",
-      trendType: numCompleted ? "up" : "neutral"
+      title: "Resume Match", 
+      value: atsScore != null ? `${atsScore}%` : "Not Added", 
+      icon: FileText, 
+      description: resume ? `${resume.ats_matched_keywords?.length || 0} skills indexed` : "Upload PDF resume",
+      trend: atsScore >= 75 ? "Optimized" : atsScore >= 50 ? "Competitive" : "Pending",
+      trendType: atsScore >= 60 ? "up" : "neutral"
     },
     { 
-      title: "Communication", 
-      value: numCompleted ? `${getAvgMetric('communication')}%` : "—", 
-      icon: MessageSquare, 
-      description: numCompleted ? "Grammar, pace & clarity" : "STAR delivery",
-      trend: numCompleted ? "Verified" : "Pending",
-      trendType: numCompleted ? "up" : "neutral"
+      title: "AI Readiness", 
+      value: "Ready", 
+      icon: Zap, 
+      description: "Speech & live scoring",
+      trend: "Online",
+      trendType: "up"
     },
   ];
 
@@ -271,20 +268,18 @@ const Dashboard = () => {
       {/* Main Dashboard Workspace */}
       <main className="flex-1 min-w-0 p-5 md:p-8 lg:p-10 overflow-y-auto max-w-7xl">
         
-        {/* Top Header: Greeting, Quick Launch & AI Status Strip */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+        {/* Top Header: Greeting & Quick Action */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display font-extrabold text-2xl md:text-3xl text-midnight tracking-tight">
-                Welcome back, {firstName} 👋
-              </h1>
-            </div>
-            <p className="text-gray-500 text-xs md:text-sm mt-0.5">
-              Ready for your next mock interview? Pick a track or calibrate your voice below.
+            <h1 className="font-display font-extrabold text-2xl md:text-3xl text-midnight tracking-tight">
+              Welcome back, {firstName} 👋
+            </h1>
+            <p className="text-gray-500 text-xs md:text-sm mt-1">
+              Select an interview track below to start your mock practice session.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => {
                 setInterviewType('Technical');
@@ -293,22 +288,17 @@ const Dashboard = () => {
               className="btn-primary py-2.5 px-5 shadow-glow font-bold text-xs flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Play size={14} fill="white" />
-              <span>Start Quick Practice</span>
+              <span>+ Custom Interview</span>
             </button>
           </div>
         </div>
 
-        {/* Compact AI System Bar */}
-        <div className="mb-5">
-          <AIStatusPanel />
-        </div>
-
         {/* Alert if resume missing */}
         {!resume && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2.5">
               <FileWarning size={16} className="text-amber-600 shrink-0" />
-              <span><b>No resume uploaded:</b> Upload your PDF resume so the AI asks questions targeting your actual tech stack.</span>
+              <span><b>Upload Resume:</b> Add your PDF resume so the AI can ask personalized questions targeting your tech stack.</span>
             </div>
             <Link 
               to="/resume" 
@@ -319,8 +309,8 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Top Metrics Ribbon (Compact 4-column cards) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        {/* Top Metrics Ribbon (Clean, Abstracted High-Level Stats) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {stats.map((stat, idx) => (
             <DashboardCard
               key={idx}
@@ -334,12 +324,12 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* View Switcher: Overview vs Analytics */}
+        {/* View Switcher: Tracks vs Analytics */}
         <div className="flex items-center justify-between border-b border-cream-border/70 pb-3 mb-5">
           <div className="flex items-center gap-1.5 p-1 bg-cream-darker/15 rounded-xl border border-cream-border/60">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'overview'
                   ? 'bg-white text-midnight shadow-xs'
                   : 'text-gray-500 hover:text-midnight'
@@ -350,7 +340,7 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'analytics'
                   ? 'bg-white text-midnight shadow-xs'
                   : 'text-gray-500 hover:text-midnight'
@@ -363,89 +353,77 @@ const Dashboard = () => {
               )}
             </button>
           </div>
-
-          <span className="text-xs text-gray-400 hidden sm:inline">
-            1-Click Practice • Voice & Emotion AI
-          </span>
         </div>
 
-        {/* TAB 1: PRACTICE WORKSPACE (Two-Column Balanced Layout) */}
+        {/* TAB 1: PRACTICE WORKSPACE (Clean Full-Width Tracks + Balanced 2-Column History & Resume) */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="flex flex-col gap-6">
             
-            {/* Left Main Column (7 cols): Quick Practice Tracks + Daily Rapid Drill + Recent Sessions */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
-              
-              {/* 1. Quick Practice Tracks (2x2 Grid) */}
-              <div className="glass-card p-5 border border-cream-border/70 rounded-2xl bg-white/90 shadow-xs">
-                <div className="flex items-center justify-between mb-3.5">
-                  <div className="flex items-center gap-2">
-                    <Target size={16} className="text-primary" />
-                    <h2 className="font-display font-bold text-sm text-midnight">
-                      Instant Practice Tracks
-                    </h2>
-                  </div>
-                  <span className="text-[11px] text-gray-400">Click any format to start</span>
+            {/* 1. Interview Tracks (Direct clean cards without nested wrapper) */}
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Target size={15} className="text-primary" />
+                  <h2 className="font-display font-bold text-sm text-midnight">
+                    Interview Tracks
+                  </h2>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {QUICK_TRACKS.map((track) => {
-                    const Icon = track.icon;
-                    const isResumeDisabled = track.requiresResume && !resume;
-                    return (
-                      <div
-                        key={track.id}
-                        onClick={() => {
-                          if (isResumeDisabled) {
-                            navigate('/resume');
-                          } else {
-                            handleQuickLaunch(track.type);
-                          }
-                        }}
-                        className={`p-3.5 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-sm hover:-translate-y-0.5 group ${track.accent}`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-white/80 border border-cream-border/50 flex items-center justify-center shadow-2xs">
-                              <Icon size={16} />
-                            </div>
-                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-white/90 border border-cream-border/50">
-                              {track.badge}
-                            </span>
-                          </div>
-                          <h3 className="font-display font-bold text-xs text-midnight group-hover:text-primary transition-colors">
-                            {track.title}
-                          </h3>
-                          <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                            {isResumeDisabled ? 'Upload resume first to enable.' : track.desc}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 pt-2 border-t border-cream-border/40 flex items-center justify-between text-[11px] font-bold">
-                          <span>{isResumeDisabled ? 'Upload Resume →' : 'Start Now'}</span>
-                          <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <span className="text-xs text-gray-400">1-click instant practice</span>
               </div>
 
-              {/* 2. Daily Rapid Drill */}
-              <DailyChallengeCard 
-                onStartPractice={(formatType) => {
-                  setInterviewType(formatType);
-                  setIsModalOpen(true);
-                }} 
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {QUICK_TRACKS.map((track) => {
+                  const Icon = track.icon;
+                  const isResumeDisabled = track.requiresResume && !resume;
+                  return (
+                    <div
+                      key={track.id}
+                      onClick={() => {
+                        if (isResumeDisabled) {
+                          navigate('/resume');
+                        } else {
+                          handleQuickLaunch(track.type);
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col justify-between hover:shadow-md hover:-translate-y-1 group bg-white/95 ${track.accent}`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-cream-border/60 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                            <Icon size={16} />
+                          </div>
+                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-white/90 border border-cream-border/50 shadow-2xs">
+                            {track.badge}
+                          </span>
+                        </div>
+                        <h3 className="font-display font-bold text-xs text-midnight group-hover:text-primary transition-colors">
+                          {track.title}
+                        </h3>
+                        <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                          {isResumeDisabled ? 'Upload resume first to enable.' : track.desc}
+                        </p>
+                      </div>
 
-              {/* 3. Recent Sessions Table */}
-              <div className="glass-card p-5 border border-cream-border/70 rounded-2xl bg-white/90 shadow-xs">
+                      <div className="mt-3.5 pt-2.5 border-t border-cream-border/40 flex items-center justify-between text-xs font-bold">
+                        <span className="group-hover:text-primary transition-colors">{isResumeDisabled ? 'Upload Resume →' : 'Start Track'}</span>
+                        <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Balanced 2-Column: History Table (8 cols) & Resume ATS (4 cols) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Recent Sessions Table (8 cols) */}
+              <div className="lg:col-span-8 glass-card p-6 border border-cream-border/70 rounded-2xl bg-white/90 shadow-xs flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-primary" />
                     <h3 className="font-display font-bold text-sm text-midnight">
-                      Recent Mock Sessions
+                      Recent Interview History
                     </h3>
                   </div>
                   <Link to="/history" className="text-xs text-primary font-bold hover:underline flex items-center gap-0.5">
@@ -455,7 +433,7 @@ const Dashboard = () => {
                 </div>
 
                 {interviews.length === 0 ? (
-                  <div className="text-center py-8 px-4 border border-dashed border-cream-border rounded-xl bg-cream/20">
+                  <div className="text-center py-10 px-4 border border-dashed border-cream-border rounded-xl bg-cream/20 flex-1 flex flex-col items-center justify-center">
                     <p className="text-xs text-gray-500 mb-3">No mock interview sessions recorded yet.</p>
                     <button 
                       onClick={() => setIsModalOpen(true)}
@@ -465,7 +443,7 @@ const Dashboard = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto flex-1">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-cream-border/60 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -477,7 +455,7 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-cream-border/40 text-xs">
-                        {interviews.slice(0, 4).map((item) => (
+                        {interviews.slice(0, 5).map((item) => (
                           <tr key={item.id} className="hover:bg-cream-darker/10 transition-colors">
                             <td className="py-3 px-3 font-semibold text-midnight truncate max-w-[140px]">{item.role}</td>
                             <td className="py-3 px-3 text-gray-500">{item.interview_type}</td>
@@ -518,147 +496,83 @@ const Dashboard = () => {
                 )}
               </div>
 
-            </div>
-
-            {/* Right Assistant Column (5 cols): ATS Resume Card + Pre-Flight Calibrator + Readiness Roadmap */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              
-              {/* ATS Resume Compatibility Card */}
-              {resume && atsScore != null ? (
-                <div className="glass-card p-5 border border-cream-border/70 rounded-2xl bg-white/95 shadow-xs">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <FileText size={16} className="text-primary" />
-                      <h3 className="font-display font-bold text-sm text-midnight">Resume ATS Readiness</h3>
-                    </div>
-                    <Link to="/resume" className="text-[11px] font-bold text-primary hover:underline">
-                      Manage →
-                    </Link>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-3 rounded-xl bg-cream/30 border border-cream-border/60 mb-3">
-                    <div className="relative w-14 h-14 shrink-0">
-                      <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-                        <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(107,114,128,0.12)" strokeWidth="5" />
-                        <circle
-                          cx="28" cy="28" r="22"
-                          fill="none"
-                          stroke={atsColor}
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                          strokeDasharray={`${(atsScore / 100) * (2 * Math.PI * 22)} ${2 * Math.PI * 22}`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="font-extrabold text-sm text-midnight">{atsScore}</span>
-                        <span className="text-[6px] text-gray-400 font-bold uppercase">ATS</span>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0">
-                      <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1"
-                        style={{ background: `${atsColor}15`, color: atsColor, border: `1px solid ${atsColor}30` }}
-                      >
-                        {atsScore >= 80 ? 'Strong Match' : atsScore >= 60 ? 'Competitive' : 'Needs Optimization'}
-                      </span>
-                      <p className="text-[11px] text-gray-500 truncate">
-                        {resume.ats_matched_keywords?.length || 0} skills indexed from PDF
-                      </p>
-                    </div>
-                  </div>
-
-                  {resume.ats_matched_keywords?.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {resume.ats_matched_keywords.slice(0, 6).map((kw, i) => (
-                        <span key={i} className="bg-primary/5 text-primary border border-primary/10 px-2 py-0.5 rounded text-[10px] font-medium">
-                          {kw}
-                        </span>
-                      ))}
-                      {resume.ats_matched_keywords.length > 6 && (
-                        <Link to="/resume" className="text-[10px] text-gray-400 hover:text-primary mt-0.5">
-                          +{resume.ats_matched_keywords.length - 6} more
+              {/* Resume ATS Readiness (4 cols) */}
+              <div className="lg:col-span-4 flex flex-col">
+                {resume && atsScore != null ? (
+                  <div className="glass-card p-6 border border-cream-border/70 rounded-2xl bg-white/95 shadow-xs flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <FileText size={16} className="text-primary" />
+                          <h3 className="font-display font-bold text-sm text-midnight">Resume ATS Readiness</h3>
+                        </div>
+                        <Link to="/resume" className="text-[11px] font-bold text-primary hover:underline">
+                          Manage →
                         </Link>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-3.5 rounded-xl bg-cream/30 border border-cream-border/60 mb-4">
+                        <div className="relative w-14 h-14 shrink-0">
+                          <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
+                            <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(107,114,128,0.12)" strokeWidth="5" />
+                            <circle
+                              cx="28" cy="28" r="22"
+                              fill="none"
+                              stroke={atsColor}
+                              strokeWidth="5"
+                              strokeLinecap="round"
+                              strokeDasharray={`${(atsScore / 100) * (2 * Math.PI * 22)} ${2 * Math.PI * 22}`}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="font-extrabold text-sm text-midnight">{atsScore}</span>
+                            <span className="text-[6px] text-gray-400 font-bold uppercase">ATS</span>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1"
+                            style={{ background: `${atsColor}15`, color: atsColor, border: `1px solid ${atsColor}30` }}
+                          >
+                            {atsScore >= 80 ? 'Strong Match' : atsScore >= 60 ? 'Competitive' : 'Needs Optimization'}
+                          </span>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {resume.ats_matched_keywords?.length || 0} skills indexed from PDF
+                          </p>
+                        </div>
+                      </div>
+
+                      {resume.ats_matched_keywords?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {resume.ats_matched_keywords.slice(0, 10).map((kw, i) => (
+                            <span key={i} className="bg-primary/5 text-primary border border-primary/10 px-2 py-0.5 rounded text-[10px] font-medium">
+                              {kw}
+                            </span>
+                          ))}
+                          {resume.ats_matched_keywords.length > 10 && (
+                            <Link to="/resume" className="text-[10px] text-gray-400 hover:text-primary mt-0.5">
+                              +{resume.ats_matched_keywords.length - 10} more
+                            </Link>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="glass-card p-5 border border-dashed border-amber-300 rounded-2xl bg-amber-50/50 flex flex-col items-center text-center">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2">
-                    <FileText size={18} />
                   </div>
-                  <h4 className="font-display font-bold text-xs text-amber-950">Add Resume to Calibrate Questions</h4>
-                  <p className="text-[11px] text-amber-800 mt-1 max-w-xs">
-                    Upload your PDF resume to calibrate technical depth and generate personalized interview questions.
-                  </p>
-                  <Link to="/resume" className="btn-primary mt-3 py-1.5 px-4 text-xs font-bold">
-                    Upload Resume PDF
-                  </Link>
-                </div>
-              )}
-
-              {/* Pre-Flight Hardware Calibrator */}
-              <HardwareCalibrator />
-
-              {/* Interview Readiness Roadmap (Compact vertical timeline) */}
-              <div className="glass-card p-5 border border-cream-border/70 rounded-2xl bg-white/95 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Compass size={16} className="text-primary" />
-                    <h3 className="font-display font-bold text-sm text-midnight">Readiness Milestones</h3>
+                ) : (
+                  <div className="glass-card p-6 border border-dashed border-amber-300 rounded-2xl bg-amber-50/50 flex-1 flex flex-col items-center justify-center text-center">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2">
+                      <FileText size={18} />
+                    </div>
+                    <h4 className="font-display font-bold text-xs text-amber-950">Targeted Resume Questions</h4>
+                    <p className="text-[11px] text-amber-800 mt-1 max-w-xs">
+                      Upload your PDF resume to calibrate technical depth and generate personalized interview questions.
+                    </p>
+                    <Link to="/resume" className="btn-primary mt-3 py-1.5 px-4 text-xs font-bold">
+                      Upload Resume PDF
+                    </Link>
                   </div>
-                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10">
-                    {numCompleted > 0 ? '2 of 3 Done' : resume ? '1 of 3 Done' : '0 of 3 Done'}
-                  </span>
-                </div>
-
-                <div className="space-y-3 mt-2">
-                  {/* Step 1 */}
-                  <div className="flex items-start gap-3 text-xs">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                      resume ? 'bg-emerald-100 text-emerald-600' : 'bg-cream-border text-gray-400'
-                    }`}>
-                      {resume ? <Check size={13} /> : '1'}
-                    </div>
-                    <div>
-                      <span className="font-bold text-midnight block">Resume ATS Indexing</span>
-                      <span className="text-[11px] text-gray-400">
-                        {resume ? 'Indexed & ready for custom questions' : 'Pending resume upload'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="flex items-start gap-3 text-xs">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                      numCompleted > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-primary/20 text-primary'
-                    }`}>
-                      {numCompleted > 0 ? <Check size={13} /> : '2'}
-                    </div>
-                    <div>
-                      <span className="font-bold text-midnight block">First Diagnostic Session</span>
-                      <span className="text-[11px] text-gray-400">
-                        {numCompleted > 0 ? 'Diagnostic completed' : 'Ready to take baseline test'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div className="flex items-start gap-3 text-xs">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                      numCompleted > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-cream-border text-gray-400'
-                    }`}>
-                      {numCompleted > 0 ? <Check size={13} /> : '3'}
-                    </div>
-                    <div>
-                      <span className="font-bold text-midnight block">Speech & Facial Sentiment</span>
-                      <span className="text-[11px] text-gray-400">
-                        {numCompleted > 0 ? 'Multimodal metrics available in report' : 'Unlocks after round 1'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
             </div>

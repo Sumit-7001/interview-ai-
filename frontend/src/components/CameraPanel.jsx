@@ -16,6 +16,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
   const eyesOpenRef = useRef(eyesOpen);
   const eyeContactScoreRef = useRef(eyeContactScore);
   const onEyeContactUpdateRef = useRef(onEyeContactUpdate);
+  const onEmotionUpdateRef = useRef(onEmotionUpdate);
   const lastNotifiedScoreRef = useRef(null);
 
   const [faceDetected, setFaceDetected] = useState(true);
@@ -29,7 +30,8 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     faceDetectedRef.current = faceDetected;
     lookingAwayRef.current = lookingAway;
     onEyeContactUpdateRef.current = onEyeContactUpdate;
-  }, [isRecording, eyesOpen, faceDetected, lookingAway, onEyeContactUpdate]);
+    onEmotionUpdateRef.current = onEmotionUpdate;
+  }, [isRecording, eyesOpen, faceDetected, lookingAway, onEyeContactUpdate, onEmotionUpdate]);
 
   // Start Webcam
   const streamRef = useRef(null);
@@ -214,7 +216,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
             ? 'No Face'
             : (dominant.charAt(0).toUpperCase() + dominant.slice(1));
           setCurrentEmotion(capDom);
-          onEmotionUpdate(capDom, probs);
+          onEmotionUpdateRef.current(capDom, probs);
 
         } catch (err) {
           console.error("Emotion analysis request failed:", err);
@@ -232,7 +234,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [isRecording, stream, onEmotionUpdate]);
+  }, [isRecording, stream]);
 
 
   return (

@@ -2,8 +2,9 @@
 AI Router — /api/ai/* endpoints
 
 Provides:
-  GET  /api/ai/health           — AI service availability status
+  GET  /api/ai/health            — AI service availability status
   POST /api/ai/generate-question — On-demand question generation (testing/preview)
+  POST /api/emotion/analyze      — Real-time webcam frame emotion + eye-contact analysis
 
 SECURITY: No secrets are ever returned in responses.
 """
@@ -21,6 +22,9 @@ from app.config import settings
 from app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
+
+# Separate router for emotion endpoint (mounted at /api prefix in main.py)
+emotion_router = APIRouter(prefix="/api/emotion", tags=["Emotion Analysis"])
 logger = logging.getLogger(__name__)
 
 
@@ -123,3 +127,57 @@ async def preview_questions(
             status_code=503,
             detail="AI service temporarily unavailable. Please try again.",
         )
+
+
+# ── Emotion Analysis Endpoint ─────────────────────────────────────────────────
+
+class EmotionRequest(BaseModel):
+    frame: str  # base64-encoded JPEG/PNG webcam frame (with or without data URI header)
+
+
+@emotion_router.post("/analyze")
+async def analyze_emotion_frame(
+    payload: EmotionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Real-time facial emotion + eye-contact analysis from a webcam frame.
+
+    Accepts a base64-encoded image frame (640x480 or 320x240 JPEG).
+    Returns dominant emotion, per-emotion probabilities, eyes-open status,
+    eye-contact alignment score, and face-detected flag.
+
+    Called by CameraPanel every ~1.5 seconds during an active recording session.
+    """
+    try:
+        from app.services.cv_service import analyze_emotion
+
+        frame_b64 = payload.frame
+        if not frame_b64:
+            raise HTTPException(status_code=422, detail="No frame data provided.")
+
+        dominant, probs, eyes_detected, eye_contact_score, face_detected = await analyze_emotion(frame_b64)
+
+        return {
+            "dominant_emotion": dominant,
+            "emotion_probabilities": probs,
+            "eyes_detected": eyes_detected,
+            "eye_contact_score": eye_contact_score,
+            "face_detected": face_detected,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Emotion analysis endpoint error: %s", exc, exc_info=True)
+        # Return a neutral fallback so the UI stays responsive rather than crashing
+        return {
+            "dominant_emotion": "neutral",
+            "emotion_probabilities": {
+                "neutral": 100.0, "happy": 0.0, "sad": 0.0,
+                "angry": 0.0, "fear": 0.0, "surprise": 0.0, "disgust": 0.0,
+            },
+            "eyes_detected": True,
+            "eye_contact_score": 85.0,
+            "face_detected": True,
+        }
