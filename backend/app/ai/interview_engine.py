@@ -40,26 +40,31 @@ async def generate_opening_question(
 ) -> Dict[str, Any]:
     """
     Generate the first question of the interview based directly on resume projects.
-    Strictly avoids generic questions.
+    If no resume data exists, generates a general role-specific technical question.
+    Strictly avoids fabricating project names or technologies.
     """
     projects = resume_context.get("projects", [])
     experience = resume_context.get("experience", [])
-    candidate_name = resume_context.get("candidate_name", "Candidate")
+    skills_data = resume_context.get("skills", {})
+    all_skills = skills_data.get("all_skills", []) if isinstance(skills_data, dict) else []
+    has_resume_data = bool(projects or experience or all_skills)
 
     # Log opening question context
     logger.info(
         "\n[OPENING QUESTION LLM CONTEXT]\n"
-        "Resume Context: %s\n"
-        "Role: %s\n"
-        "Experience Level: %s\n"
-        "Interview Type: %s\n",
-        json.dumps(resume_context, default=str),
+        "Has Resume Data: %s\n"
+        "Projects: %d, Experience: %d, Skills: %d\n"
+        "Role: %s | Experience Level: %s | Interview Type: %s\n",
+        has_resume_data,
+        len(projects),
+        len(experience),
+        len(all_skills),
         role,
         experience_level,
         interview_type,
     )
 
-    # 1. Try LLM generation with resume context
+    # 1. Try LLM generation (prompt automatically handles no-resume vs resume case)
     prompt = resume_opening_question_prompt(
         role=role,
         experience_level=experience_level,
@@ -70,50 +75,77 @@ async def generate_opening_question(
 
     if llm_res and isinstance(llm_res, dict) and "question" in llm_res:
         q_text = str(llm_res["question"]).strip()
-        if len(q_text) > 15:
-            topic = llm_res.get("target_topic") or (projects[0]["name"] if projects else "Background")
-            logger.info("Generated resume-driven opening question: %s...", q_text[:80])
+        # Safety guard: if LLM still says "I noticed you built" but there is no resume, reject it
+        if not has_resume_data and "i noticed you built" in q_text.lower():
+            logger.warning(
+                "LLM hallucinated a resume-based question despite no resume data. Rejecting. Q=%s",
+                q_text[:80]
+            )
+            # Don't use this hallucinated question — fall through to deterministic fallback
+        elif len(q_text) > 15:
+            topic = llm_res.get("target_topic") or (projects[0]["name"] if projects else "Technical Fundamentals")
+            logger.info("Generated opening question (has_resume=%s): %s...", has_resume_data, q_text[:80])
             return {
                 "question": q_text,
                 "current_topic": topic,
-                "stage": "project_overview",
+                "stage": "project_overview" if has_resume_data else "general_technical",
                 "difficulty": "easy",
-                "question_type": "project_opening",
+                "question_type": "project_opening" if has_resume_data else "general_technical",
                 "tts_text": q_text,
             }
 
-    # 2. Deterministic Fallback if LLM fails
-    if projects:
-        top_project = projects[0]
-        p_name = top_project.get("name", "your project")
-        techs = ", ".join(top_project.get("technologies", [])[:3])
-        tech_clause = f" using {techs}" if techs else ""
-        fallback_q = (
-            f"I noticed you built an {p_name}{tech_clause}. "
-            f"Can you explain the architecture and your personal contribution to it?"
-        )
-        topic = p_name
-    elif experience:
-        top_exp = experience[0]
-        company = top_exp.get("company") or top_exp.get("role_or_company", "your previous company")
-        role_t = top_exp.get("role", role)
-        fallback_q = (
-            f"I see from your resume that you worked as a {role_t} at {company}. "
-            f"Can you walk me through the system architecture and responsibilities you had there?"
-        )
-        topic = f"{role_t} at {company}"
+    # 2. Deterministic Fallback
+    if has_resume_data:
+        # Resume-based fallback
+        if projects:
+            top_project = projects[0]
+            p_name = top_project.get("name", "your project")
+            techs = ", ".join(top_project.get("technologies", [])[:3])
+            tech_clause = f" using {techs}" if techs else ""
+            fallback_q = (
+                f"I noticed you built {p_name}{tech_clause}. "
+                f"Can you explain the architecture and your personal contribution to it?"
+            )
+            topic = p_name
+        elif experience:
+            top_exp = experience[0]
+            company = top_exp.get("company") or top_exp.get("role_or_company", "your previous company")
+            role_t = top_exp.get("role", role)
+            fallback_q = (
+                f"I see from your resume that you worked as a {role_t} at {company}. "
+                f"Can you walk me through the technical systems and responsibilities you had there?"
+            )
+            topic = f"{role_t} at {company}"
+        else:
+            # Skills only — no projects/experience
+            skill_list = ", ".join(all_skills[:4])
+            fallback_q = (
+                f"I can see you have experience with {skill_list}. "
+                f"Can you describe a real system or project where you applied these technologies and explain the architecture?"
+            )
+            topic = "Technical Skills"
     else:
-        fallback_q = (
-            f"Welcome to the interview! To get started, can you tell me about the architecture of a technical project you built recently?"
+        # No resume at all — general role-specific question
+        general_questions = {
+            "backend": f"Can you walk me through how you would design a scalable REST API for a high-traffic application, including authentication, rate limiting, and database architecture?",
+            "frontend": f"Can you explain how you would architect a large React application for maintainability, performance, and scalability?",
+            "full stack": f"Can you walk me through the architecture of a full-stack web application — from the frontend to the backend to the database — including how you would handle authentication and state management?",
+            "machine learning": f"Can you explain how you would design and deploy a machine learning pipeline from data collection to model serving in production?",
+            "data": f"Can you describe how you would build a data pipeline for ingesting, transforming, and analyzing large-scale datasets?",
+        }
+        role_lower = role.lower()
+        fallback_q = next(
+            (q for keyword, q in general_questions.items() if keyword in role_lower),
+            f"Can you walk me through how you would architect a system for a typical {role} project, covering the key design decisions and trade-offs you would consider?"
         )
-        topic = "Recent Project"
+        topic = f"{role} System Design"
 
     return {
         "question": fallback_q,
         "current_topic": topic,
-        "stage": "project_overview",
+        "stage": "project_overview" if has_resume_data else "general_technical",
         "difficulty": "easy",
-        "question_type": "project_opening",
+        "question_type": "project_opening" if has_resume_data else "general_technical",
         "tts_text": fallback_q,
     }
 

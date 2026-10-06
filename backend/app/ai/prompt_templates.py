@@ -226,15 +226,46 @@ def resume_opening_question_prompt(
     Generate the very FIRST question directly based on the candidate's resume.
     Strictly forbids generic openers like 'Tell me about yourself'.
     Directly references an actual project or experience from the resume.
+    If no resume data exists, generates a general technical/role-based question.
     """
-    candidate_name = resume_context.get("candidate_name", "the candidate")
     projects = resume_context.get("projects", [])
     experience = resume_context.get("experience", [])
     skills = resume_context.get("skills", {})
+    all_skills = skills.get("all_skills", []) if isinstance(skills, dict) else []
+
+    has_resume_data = bool(projects or experience or all_skills)
 
     # Full structured resume context representation
     resume_context_json = json.dumps(resume_context, indent=2, default=str)
 
+    if not has_resume_data:
+        # No resume uploaded — generate a general technical opening question
+        return f"""/nothink
+You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).
+
+The candidate has NOT uploaded a resume yet.
+
+CRITICAL RULES FOR FIRST QUESTION:
+1. NEVER fabricate or invent projects, companies, or technologies the candidate has not mentioned.
+2. NEVER say "I noticed you built..." or reference any specific project since no resume is available.
+3. Ask a GENERAL, ROLE-SPECIFIC TECHNICAL QUESTION appropriate for a {experience_level} {role}.
+4. The question should test fundamental technical knowledge relevant to {role}.
+5. Focus on real-world system design, core concepts, or problem-solving for {role}.
+6. Keep the tone professional, welcoming, and focused on technical depth.
+
+EXAMPLE good questions (pick the style most fitting for {role}):
+- "Can you walk me through the architecture of a typical full-stack web application and where you see the most challenging design decisions?"
+- "Describe how you would design a scalable REST API from scratch for a high-traffic e-commerce platform."
+- "What data structures or algorithms do you consider most important for {role}, and when have you applied them?"
+
+Output ONLY a valid JSON object in this exact format:
+{{
+  "question": "Your role-specific technical question here",
+  "target_topic": "Core technical topic being assessed",
+  "reasoning": "Why this general question is appropriate since no resume was provided"
+}}"""
+
+    # Resume data is available — generate a resume-driven opening question
     return f"""/nothink
 You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).
 
@@ -248,6 +279,7 @@ CRITICAL RULES FOR FIRST QUESTION:
 4. REQUIRED FORMAT EXAMPLE:
    "I noticed you built an [Project Name] using [Tech 1, Tech 2, and Tech 3]. Can you explain its architecture and your personal contribution to it?"
 5. Keep the tone professional, welcoming, and directly focused on their technical work.
+6. NEVER invent projects that are not in the resume context above.
 
 Output ONLY a valid JSON object in this exact format:
 {{
