@@ -48,9 +48,16 @@ import tempfile
 router = APIRouter(tags=["Interview WebSocket"])
 logger = logging.getLogger(__name__)
 
-# In-memory conversation state (cleared on server restart — acceptable for college project)
-# For production, use Redis. Maps session_id → list of {question, answer} dicts
-_session_contexts: Dict[str, List[Dict[str, str]]] = {}
+# Ensure media directory exists deterministically
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+AUDIO_UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "audio")
+try:
+    os.makedirs(AUDIO_UPLOAD_DIR, exist_ok=True)
+except OSError as e:
+    logger.warning(f"Could not create audio upload directory {AUDIO_UPLOAD_DIR}: {e}")
+
+# In-memory conversation state (cleared on session close to prevent memory leaks)
+_session_contexts: Dict[str, Dict[str, Any]] = {}
 
 
 async def _send(ws: WebSocket, data: dict):
@@ -110,17 +117,21 @@ async def _update_answer_in_db(
     eye_contact_score: float,
     voice_metrics: dict,
     evaluation: dict,
+    audio_path: Optional[str] = None,
 ):
     """Update a specific question's answer in MongoDB."""
+    update_data = {
+        "questions.$.answer_text": answer_text,
+        "questions.$.emotion_summary": emotion_summary,
+        "questions.$.eye_contact_score": eye_contact_score,
+        "questions.$.voice_metrics": voice_metrics,
+        "questions.$.evaluation": evaluation,
+    }
+    if audio_path:
+        update_data["questions.$.audio_path"] = audio_path
     await db["interviews"].update_one(
         {"_id": ObjectId(interview_id), "questions.id": question_number},
-        {"$set": {
-            "questions.$.answer_text": answer_text,
-            "questions.$.emotion_summary": emotion_summary,
-            "questions.$.eye_contact_score": eye_contact_score,
-            "questions.$.voice_metrics": voice_metrics,
-            "questions.$.evaluation": evaluation,
-        }}
+        {"$set": update_data}
     )
 
 
@@ -302,45 +313,68 @@ async def interview_websocket(
                     "(audio was recorded but could not be transcribed. speech-to-text requires an internet connection.)",
                     "(no answer provided)",
                     "(transcription failed)",
+                    "(no audio captured",
                 ]
-                answer_text = "" if raw_text.lower() in placeholders else raw_text
+                answer_text = "" if any(p in raw_text.lower() for p in placeholders) else raw_text
 
                 emotion_summary = message.get("emotion", {"neutral": 100.0})
+                if not isinstance(emotion_summary, dict):
+                    emotion_summary = {"neutral": 100.0}
                 eye_contact_score = float(message.get("eye_contact", 85.0))
                 audio_b64 = message.get("audio_b64", "")
 
                 if not answer_text and not audio_b64:
-                    await _send(websocket, {"type": "error", "message": "No answer or audio received. Please try speaking again."})
+                    await _send(websocket, {"type": "error", "message": "No answer or audio received. Please try speaking or typing again."})
                     continue
+
+                # Fetch active session state for context
+                curr_state = _session_contexts.get(context_key, session_state)
+                curr_q_num = curr_state.get("question_number", question_number)
+                curr_q_text = curr_state.get("current_question", current_question_text)
 
                 # Process audio if provided
                 voice_metrics = {"duration_seconds": 0, "speaking_speed": 120, "filler_words_count": 0}
+                saved_audio_path = None
                 if audio_b64:
                     try:
+                        # Handle Data URI header if present
+                        if "," in audio_b64:
+                            audio_b64 = audio_b64.split(",", 1)[1]
                         audio_bytes = base64.b64decode(audio_b64)
-                        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                            tmp.write(audio_bytes)
-                            tmp_path = tmp.name
-                        if not answer_text:
-                            answer_text = await transcribe_audio_hf(tmp_path, current_question_text)
-                        voice_metrics = await analyze_voice(tmp_path)
-                        os.unlink(tmp_path)
+                        if len(audio_bytes) > 0:
+                            filename = f"{session_id}_q{curr_q_num}_{int(datetime.utcnow().timestamp())}.wav"
+                            saved_audio_path = os.path.join(AUDIO_UPLOAD_DIR, filename)
+                            with open(saved_audio_path, "wb") as f:
+                                f.write(audio_bytes)
+                            if not answer_text:
+                                answer_text = await transcribe_audio_hf(saved_audio_path, curr_q_text)
+                            voice_metrics = await analyze_voice(saved_audio_path)
                     except Exception as e:
                         logger.error("WS audio processing failed: %s", e)
+                        if not answer_text:
+                            await _send(websocket, {
+                                "type": "error",
+                                "message": "Audio recording could not be processed. Please try speaking again."
+                            })
+                            continue
+
+                # Re-check placeholder filter on transcription output
+                if any(p in answer_text.lower() for p in placeholders):
+                    answer_text = ""
 
                 if not answer_text or answer_text.strip() == "":
-                    answer_text = "(Candidate did not speak or audio was inaudible)"
+                    await _send(websocket, {
+                        "type": "error",
+                        "message": "Could not recognize spoken answer. Please try speaking again or type your response."
+                    })
+                    continue
 
                 # Signal thinking
                 await _send(websocket, {"type": "thinking"})
 
-                # Fetch active session state
-                curr_state = _session_contexts.get(context_key, session_state)
                 curr_topic = curr_state.get("current_topic", current_topic)
                 curr_turns = curr_state.get("turns_on_topic", turns_on_topic)
                 curr_diff = curr_state.get("difficulty", difficulty)
-                curr_q_num = curr_state.get("question_number", question_number)
-                curr_q_text = curr_state.get("current_question", current_question_text)
                 history = curr_state.get("history", [])
                 curr_topics = curr_state.get("topics_discussed", topics_discussed)
 
@@ -373,6 +407,7 @@ async def interview_websocket(
                     eye_contact_score=eye_contact_score,
                     voice_metrics=voice_metrics,
                     evaluation=evaluation,
+                    audio_path=saved_audio_path,
                 )
 
                 await db["interviews"].update_one(
@@ -548,4 +583,11 @@ async def interview_websocket(
         logger.error("WebSocket error for session %s: %s", session_id, e, exc_info=True)
         await _send(websocket, {"type": "error", "message": "An unexpected server error occurred."})
     finally:
-        logger.info("WebSocket session %s closed", session_id)
+        # Prevent memory leaks by cleaning up conversation context
+        _session_contexts.pop(context_key, None)
+        if websocket.client_state == WebSocketState.CONNECTED:
+            try:
+                await websocket.close()
+            except Exception:
+                pass
+        logger.info("WebSocket session %s closed and memory freed", session_id)

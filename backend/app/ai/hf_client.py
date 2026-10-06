@@ -138,6 +138,8 @@ class HuggingFaceClient:
                 data = response.json()
                 if isinstance(data, dict):
                     return data.get("text", "")
+                elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                    return data[0].get("text", "")
                 return str(data)
 
             logger.error(

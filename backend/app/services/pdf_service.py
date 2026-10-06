@@ -145,18 +145,21 @@ def generate_pdf_report(interview_data: Dict[str, Any]) -> BytesIO:
     
     # Scores Breakdown Chart Table
     story.append(Paragraph("Scores Breakdown", section_heading))
-    scores_breakdown = interview_data.get('scores_breakdown', {})
+    scores_breakdown = interview_data.get('scores_breakdown') or {}
     
     breakdown_data = [
         [Paragraph("<b>Evaluation Category</b>", bold_body), Paragraph("<b>Score (0-100)</b>", bold_body), Paragraph("<b>Performance Level</b>", bold_body)]
     ]
     
     category_map = {
+        "technical_knowledge": "Technical Knowledge",
         "technical": "Technical Knowledge",
         "communication": "Communication Quality",
         "answer_quality": "Answer Depth & Content",
+        "semantic_relevance": "Semantic Relevance",
         "confidence": "Visible Confidence & Tone",
         "eye_contact": "Eye Contact & Engagement",
+        "speech_quality": "Speech Quality & Pace",
         "speech_clarity": "Speech Clarity & Pace"
     }
     
@@ -194,7 +197,7 @@ def generate_pdf_report(interview_data: Dict[str, Any]) -> BytesIO:
     story.append(Spacer(1, 20))
     
     # Executive Summary Feedback
-    feedback = interview_data.get('feedback', {})
+    feedback = interview_data.get('feedback') or {}
     
     summary_elements = []
     summary_elements.append(Paragraph("Executive Performance Summary", section_heading))

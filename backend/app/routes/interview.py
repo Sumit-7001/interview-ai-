@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, status
 from fastapi.responses import StreamingResponse
 from bson import ObjectId
 from typing import List, Optional
@@ -26,9 +26,13 @@ from app.services.pdf_service import generate_pdf_report
 router = APIRouter(tags=["Interviews"])
 logger = logging.getLogger(__name__)
 
-# Ensure media directory exists
-AUDIO_UPLOAD_DIR = "uploads/audio"
-os.makedirs(AUDIO_UPLOAD_DIR, exist_ok=True)
+# Ensure media directory exists deterministically
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+AUDIO_UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "audio")
+try:
+    os.makedirs(AUDIO_UPLOAD_DIR, exist_ok=True)
+except OSError as e:
+    logger.warning(f"Could not create audio upload directory {AUDIO_UPLOAD_DIR}: {e}")
 
 @router.post("/api/interviews", response_model=InterviewOut, status_code=status.HTTP_201_CREATED)
 async def create_interview(
@@ -131,6 +135,9 @@ async def answer_question(
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found.")
         
+    if interview.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Interview session is already completed.")
+        
     # Check if question exists
     target_q = None
     for q in interview["questions"]:
@@ -141,9 +148,11 @@ async def answer_question(
     if not target_q:
         raise HTTPException(status_code=400, detail="Question number does not exist in this session.")
         
-    # Parse emotion summary
+    # Parse emotion summary safely
     try:
         emotion_summary = json.loads(emotion_summary_json)
+        if not isinstance(emotion_summary, dict):
+            emotion_summary = {"neutral": 100.0}
     except Exception:
         emotion_summary = {"neutral": 100.0}
         
@@ -151,8 +160,13 @@ async def answer_question(
     filename = f"{id}_q{question_id}_{int(datetime.utcnow().timestamp())}.wav"
     audio_path = os.path.join(AUDIO_UPLOAD_DIR, filename)
     try:
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
         with open(audio_path, "wb") as f:
-            f.write(await audio.read())
+            f.write(audio_bytes)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to write audio file: {e}")
         raise HTTPException(status_code=500, detail="Failed to save audio file.")
@@ -198,33 +212,23 @@ async def answer_question(
     evaluation = result["evaluation"]
     updated_topics = result.get("topics_discussed", topics_discussed)
     
-    # Update question details in MongoDB
+    # Atomic update of question details and interview metadata in MongoDB
     update_data = {
         "questions.$.answer_text": answer_text,
         "questions.$.audio_path": audio_path,
         "questions.$.emotion_summary": emotion_summary,
         "questions.$.eye_contact_score": eye_contact_score,
         "questions.$.voice_metrics": voice_metrics,
-        "questions.$.evaluation": evaluation
+        "questions.$.evaluation": evaluation,
+        "topics_discussed": updated_topics,
+        "current_topic": result["current_topic"],
+        "turns_on_topic": result["turns_on_topic"],
+        "difficulty": result["difficulty"],
     }
     
     await db["interviews"].update_one(
-        {"_id": ObjectId(id), "questions.id": question_id},
-        {
-            "$set": update_data
-        }
-    )
-
-    await db["interviews"].update_one(
-        {"_id": ObjectId(id)},
-        {
-            "$set": {
-                "topics_discussed": updated_topics,
-                "current_topic": result["current_topic"],
-                "turns_on_topic": result["turns_on_topic"],
-                "difficulty": result["difficulty"],
-            }
-        }
+        {"_id": ObjectId(id), "user_id": ObjectId(current_user["id"]), "questions.id": question_id},
+        {"$set": update_data}
     )
 
     # Append next counter-question dynamically if within limit
@@ -243,15 +247,9 @@ async def answer_question(
             "evaluation": None
         }
         await db["interviews"].update_one(
-            {"_id": ObjectId(id)},
+            {"_id": ObjectId(id), "user_id": ObjectId(current_user["id"])},
             {
-                "$push": {"questions": new_q_doc},
-                "$set": {
-                    "current_topic": result["current_topic"],
-                    "turns_on_topic": result["turns_on_topic"],
-                    "difficulty": result["difficulty"],
-                    "topics_discussed": updated_topics,
-                }
+                "$push": {"questions": new_q_doc}
             }
         )
     
@@ -321,7 +319,9 @@ async def complete_interview(
         {"$set": update_doc}
     )
     
-    updated = await db["interviews"].find_one({"_id": ObjectId(id)})
+    updated = await db["interviews"].find_one({"_id": ObjectId(id), "user_id": ObjectId(current_user["id"])})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Interview session not found.")
     updated["id"] = str(updated["_id"])
     return updated
 
@@ -335,10 +335,16 @@ async def get_pdf_report(
         raise HTTPException(status_code=400, detail="Invalid report/interview ID format.")
         
     interview = await db["interviews"].find_one({"_id": ObjectId(id), "user_id": ObjectId(current_user["id"])})
-    if not interview or interview["status"] != "completed":
-        raise HTTPException(status_code=404, detail="Completed report not found.")
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview session not found.")
+    if interview.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Interview session is not completed yet.")
         
-    pdf_buffer = generate_pdf_report(interview)
+    try:
+        pdf_buffer = generate_pdf_report(interview)
+    except Exception as e:
+        logger.error(f"Failed to generate PDF report for session {id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report.")
     
     filename = f"InterviewAI_Report_{id[:8]}.pdf"
     return StreamingResponse(
@@ -376,7 +382,7 @@ async def analyze_frame(
 @router.post("/api/interviews/{id}/next-question")
 async def get_next_question(
     id: str,
-    payload: dict = None,
+    payload: Optional[dict] = Body(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -391,7 +397,6 @@ async def get_next_question(
     }
     """
     from app.ai.followup_generator import generate_followup_question, generate_initial_question
-    from fastapi import Body
 
     db = get_database()
     if not ObjectId.is_valid(id):
@@ -400,6 +405,9 @@ async def get_next_question(
     interview = await db["interviews"].find_one({"_id": ObjectId(id), "user_id": ObjectId(current_user["id"])})
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found.")
+
+    if interview.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Interview session is already completed.")
 
     role = interview.get("role", "Software Engineer")
     interview_type = interview.get("interview_type", "Technical")
@@ -418,6 +426,17 @@ async def get_next_question(
             interview_type=interview_type, resume_text=resume_text
         )
         return {"question": result["question"], "stage": result.get("stage", "introduction"), "question_number": 1}
+
+    # Check if an unanswered question already exists
+    unanswered_q = next((q for q in questions if q.get("answer_text") is None), None)
+    if unanswered_q:
+        return {
+            "question": unanswered_q.get("question_text", ""),
+            "question_number": unanswered_q.get("id", len(answered_qs) + 1),
+            "stage": "dynamic",
+            "difficulty": interview.get("difficulty", "intermediate"),
+            "topics_detected": [],
+        }
 
     # Get last answered question
     last_q = answered_qs[-1]
@@ -452,8 +471,13 @@ async def get_next_question(
         "evaluation": None,
     }
     await db["interviews"].update_one(
-        {"_id": ObjectId(id)},
-        {"$push": {"questions": new_q}}
+        {"_id": ObjectId(id), "user_id": ObjectId(current_user["id"])},
+        {
+            "$push": {"questions": new_q},
+            "$set": {
+                "difficulty": followup.get("difficulty", "intermediate"),
+            }
+        }
     )
 
     return {
