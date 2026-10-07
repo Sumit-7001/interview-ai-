@@ -221,6 +221,7 @@ def resume_opening_question_prompt(
     experience_level: str,
     interview_type: str,
     resume_context: dict,
+    company_domain: Optional[str] = None,
 ) -> str:
     """
     Generate the very FIRST question directly based on the candidate's resume.
@@ -238,10 +239,12 @@ def resume_opening_question_prompt(
     # Full structured resume context representation
     resume_context_json = json.dumps(resume_context, indent=2, default=str)
 
+    domain_clause = f"\nTARGET COMPANY/DOMAIN FOCUS: {company_domain}\nTailor the technical depth, question style, and core CS / domain concepts to align with {company_domain} interview standards (e.g. TCS NQT, Capgemini technical rounds, Banking security, Cloud architectures).\n" if company_domain else ""
+
     if not has_resume_data:
         # No resume uploaded — generate a general technical opening question
         return f"""/nothink
-You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).
+You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).{domain_clause}
 
 The candidate has NOT uploaded a resume yet.
 
@@ -267,7 +270,7 @@ Output ONLY a valid JSON object in this exact format:
 
     # Resume data is available — generate a resume-driven opening question
     return f"""/nothink
-You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).
+You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).{domain_clause}
 
 CANDIDATE'S FULL STRUCTURED RESUME CONTEXT:
 {resume_context_json}
@@ -311,6 +314,7 @@ def counter_question_analysis_prompt(
     resume_context: dict,
     topics_discussed: Optional[List[str]] = None,
     current_difficulty: str = "medium",
+    company_domain: Optional[str] = None,
 ) -> str:
     """
     Core dynamic interview intelligence prompt.
@@ -319,6 +323,7 @@ def counter_question_analysis_prompt(
     """
     candidate_name = resume_context.get("candidate_name", "Candidate")
     full_resume_json = json.dumps(resume_context, indent=2, default=str)
+    domain_header = f"Target Company/Domain: {company_domain}\n" if company_domain else ""
 
     # Format history turns
     history_lines = []
@@ -335,6 +340,7 @@ def counter_question_analysis_prompt(
 
     return f"""/nothink
 You are an expert technical interviewer conducting an interview for the {role} position.
+{domain_header}
 
 CANDIDATE'S FULL STRUCTURED RESUME CONTEXT:
 {full_resume_json}

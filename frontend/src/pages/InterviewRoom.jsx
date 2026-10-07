@@ -1114,6 +1114,11 @@ const InterviewRoom = () => {
           <div className="hidden sm:flex items-center gap-2 text-xs">
             <span className="font-bold text-white">{interview?.role || 'Interview'}</span>
             <span className="text-gray-500">({interview?.interview_type || 'Dynamic'})</span>
+            {interview?.company_domain && (
+              <span className="bg-primary/20 text-primary-light border border-primary/30 px-2.5 py-0.5 rounded-md font-extrabold text-[10px]">
+                🏢 {interview.company_domain}
+              </span>
+            )}
           </div>
         </div>
 

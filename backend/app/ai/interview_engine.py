@@ -37,6 +37,7 @@ async def generate_opening_question(
     experience_level: str,
     interview_type: str,
     resume_context: Dict[str, Any],
+    company_domain: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate the first question of the interview based directly on resume projects.
@@ -49,12 +50,14 @@ async def generate_opening_question(
     all_skills = skills_data.get("all_skills", []) if isinstance(skills_data, dict) else []
     has_resume_data = bool(projects or experience or all_skills)
 
+    domain_str = (company_domain or "").lower()
+
     # Log opening question context
     logger.info(
         "\n[OPENING QUESTION LLM CONTEXT]\n"
         "Has Resume Data: %s\n"
         "Projects: %d, Experience: %d, Skills: %d\n"
-        "Role: %s | Experience Level: %s | Interview Type: %s\n",
+        "Role: %s | Experience Level: %s | Interview Type: %s | Company Domain: %s\n",
         has_resume_data,
         len(projects),
         len(experience),
@@ -62,6 +65,7 @@ async def generate_opening_question(
         role,
         experience_level,
         interview_type,
+        company_domain,
     )
 
     # 1. Try LLM generation (prompt automatically handles no-resume vs resume case)
@@ -70,6 +74,7 @@ async def generate_opening_question(
         experience_level=experience_level,
         interview_type=interview_type,
         resume_context=resume_context,
+        company_domain=company_domain,
     )
     llm_res = await call_llm_json(prompt, max_new_tokens=350, temperature=0.2)
 
@@ -95,7 +100,16 @@ async def generate_opening_question(
             }
 
     # 2. Deterministic Fallback
-    if has_resume_data:
+    if "tcs" in domain_str:
+        fallback_q = "Welcome to the TCS Technical Round! Can you explain the difference between Call by Value and Call by Reference in programming languages, and how memory (Stack vs Heap) is managed?"
+        topic = "TCS Core Technical & Memory Management"
+    elif "capgemini" in domain_str:
+        fallback_q = "Welcome to the Capgemini Technical Round! Can you walk me through the 4 core pillars of Object-Oriented Programming (OOPs) and explain how Polymorphism is implemented with a practical example?"
+        topic = "Capgemini OOPs & Technical Fundamentals"
+    elif "banking" in domain_str or "fintech" in domain_str:
+        fallback_q = "Welcome to the Banking & FinTech Domain Track! In financial transaction processing, data integrity is paramount. Can you explain ACID properties and how you handle race conditions during concurrent account transfers?"
+        topic = "Banking System Security & ACID Integrity"
+    elif has_resume_data:
         # Resume-based fallback
         if projects:
             top_project = projects[0]
@@ -270,6 +284,7 @@ async def process_candidate_answer_and_next_question(
     topics_discussed: Optional[List[str]] = None,
     current_difficulty: str = "medium",
     question_number: int = 2,
+    company_domain: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Unified intelligence pass:
@@ -294,12 +309,14 @@ async def process_candidate_answer_and_next_question(
         "Current Question: %s\n"
         "Candidate Answer: %s\n"
         "Conversation History: %s\n"
-        "Topics Discussed: %s\n",
+        "Topics Discussed: %s\n"
+        "Company Domain: %s\n",
         json.dumps(resume_context, default=str),
         prev_question,
         cleaned_answer,
         json.dumps(conversation_history, default=str),
         json.dumps(topics_list, default=str),
+        company_domain,
     )
 
     # 1. Try high-intelligence LLM pass
@@ -313,6 +330,7 @@ async def process_candidate_answer_and_next_question(
         resume_context=resume_context,
         topics_discussed=topics_list,
         current_difficulty=current_difficulty,
+        company_domain=company_domain,
     )
 
     llm_res = await call_llm_json(prompt, max_new_tokens=450, temperature=0.2)

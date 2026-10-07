@@ -205,6 +205,8 @@ async def interview_websocket(
     turns_on_topic = interview.get("turns_on_topic", 1)
     difficulty = interview.get("difficulty", "medium")
 
+    company_domain = interview.get("company_domain")
+
     # Find first unanswered question if it exists in DB
     unanswered_q = next((q for q in db_questions if q.get("answer_text") is None), None)
     if unanswered_q:
@@ -225,6 +227,7 @@ async def interview_websocket(
         "current_question": current_question_text,
         "question_number": question_number,
         "topics_discussed": topics_discussed,
+        "company_domain": company_domain,
     }
 
     session_state = _session_contexts[context_key]
@@ -234,8 +237,8 @@ async def interview_websocket(
     max_questions = settings.MAX_INTERVIEW_QUESTIONS or 10
 
     logger.info(
-        "WS Interview active: session=%s user=%s role=%s type=%s Q#%d (history=%d topics=%d)",
-        session_id, current_user["id"], role, interview_type, question_number, len(history), len(topics_discussed)
+        "WS Interview active: session=%s user=%s role=%s type=%s domain=%s Q#%d (history=%d topics=%d)",
+        session_id, current_user["id"], role, interview_type, company_domain, question_number, len(history), len(topics_discussed)
     )
 
     try:
@@ -269,6 +272,7 @@ async def interview_websocket(
                         experience_level=experience_level,
                         interview_type=interview_type,
                         resume_context=resume_context,
+                        company_domain=company_domain,
                     )
                     current_question_text = opening_res["question"]
                     question_number = 1
@@ -391,6 +395,7 @@ async def interview_websocket(
                     topics_discussed=curr_topics,
                     current_difficulty=curr_diff,
                     question_number=curr_q_num,
+                    company_domain=company_domain,
                 )
 
                 evaluation = result["evaluation"]

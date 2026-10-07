@@ -40,14 +40,11 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
       try {
         setPermissionError(false);
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: 640, height: 480 },
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
           audio: false 
         });
         streamRef.current = mediaStream;
         setStream(mediaStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
       } catch (err) {
         console.error("Webcam access error:", err);
         setPermissionError(true);
@@ -63,6 +60,14 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
       }
     };
   }, []);
+
+  // Attach stream to video element as soon as it mounts
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => console.warn("Video play warning:", err));
+    }
+  }, [stream]);
 
   // Canvas Scanlines & Tracking Visualizer
   useEffect(() => {
@@ -154,12 +159,12 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     };
   }, [videoRef, canvasRef]);
 
-  // Periodic Real-Time Computer Vision Analysis (Every 1.5 seconds during recording)
+  // Periodic Real-Time Computer Vision Analysis (Every 1.5 seconds whenever stream is live)
   useEffect(() => {
     let intervalId;
     let isAnalyzing = false;
 
-    if (isRecording && stream) {
+    if (stream) {
       intervalId = setInterval(async () => {
         if (isAnalyzing || !videoRef.current) return;
         isAnalyzing = true;
@@ -192,7 +197,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
             setEyeContactScore(score);
             if (score !== lastNotifiedScoreRef.current) {
               lastNotifiedScoreRef.current = score;
-              onEyeContactUpdateRef.current(score);
+              if (onEyeContactUpdateRef.current) onEyeContactUpdateRef.current(score);
             }
             return;
           }
@@ -208,15 +213,15 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
 
           if (smoothedScore !== lastNotifiedScoreRef.current) {
             lastNotifiedScoreRef.current = smoothedScore;
-            onEyeContactUpdateRef.current(smoothedScore);
+            if (onEyeContactUpdateRef.current) onEyeContactUpdateRef.current(smoothedScore);
           }
 
-          // Format clean capitalized emotion label
+          // Format clean capitalized emotion label (e.g. Happy, Angry, Sad, Neutral)
           const capDom = dominant === 'no_face'
             ? 'No Face'
             : (dominant.charAt(0).toUpperCase() + dominant.slice(1));
           setCurrentEmotion(capDom);
-          onEmotionUpdateRef.current(capDom, probs);
+          if (onEmotionUpdateRef.current) onEmotionUpdateRef.current(capDom, probs);
 
         } catch (err) {
           console.error("Emotion analysis request failed:", err);
@@ -234,7 +239,7 @@ const CameraPanel = ({ isRecording, onEmotionUpdate, onEyeContactUpdate }) => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [isRecording, stream]);
+  }, [stream]);
 
 
   return (

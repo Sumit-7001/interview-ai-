@@ -49,6 +49,36 @@ import {
 
 const QUICK_TRACKS = [
   {
+    id: 'tcs',
+    type: 'Technical',
+    company_domain: 'TCS NQT / Digital',
+    title: 'TCS NQT / Digital Track',
+    desc: 'Core CS, Pseudocode, Memory Stack/Heap, DBMS, OOPs & HR round prep',
+    icon: Code2,
+    badge: 'TCS Special',
+    accent: 'border-blue-200 hover:border-blue-500 text-blue-600 bg-gradient-to-br from-blue-50/70 to-white'
+  },
+  {
+    id: 'capgemini',
+    type: 'Technical',
+    company_domain: 'Capgemini Technical',
+    title: 'Capgemini Technical Track',
+    desc: 'Pseudocode, Data Structures, OOPs 4 Pillars, Exception handling & Logic',
+    icon: Brain,
+    badge: 'Capgemini',
+    accent: 'border-indigo-200 hover:border-indigo-500 text-indigo-600 bg-gradient-to-br from-indigo-50/70 to-white'
+  },
+  {
+    id: 'fintech',
+    type: 'Technical',
+    company_domain: 'Banking & FinTech',
+    title: 'Banking & FinTech Systems',
+    desc: 'ACID transactions, Security, Microservices, Payment Gateways & Scalability',
+    icon: Zap,
+    badge: 'Banking/FinTech',
+    accent: 'border-emerald-200 hover:border-emerald-500 text-emerald-600 bg-gradient-to-br from-emerald-50/70 to-white'
+  },
+  {
     id: 'technical',
     type: 'Technical',
     title: 'Technical & System Design',
@@ -88,11 +118,14 @@ const QUICK_TRACKS = [
 ];
 
 const QUICK_PRESETS = [
-  { label: '💻 Frontend (React)', role: 'React Developer', level: 'Mid', type: 'Technical' },
-  { label: '🐍 Backend (Python)', role: 'Python Developer', level: 'Mid', type: 'Technical' },
-  { label: '⚡ Full Stack', role: 'Full Stack Developer', level: 'Mid', type: 'Technical' },
-  { label: '👥 Behavioral (STAR)', role: 'Software Engineer', level: 'Mid', type: 'Behavioral' },
-  { label: '📄 Resume Deep-Dive', role: 'Software Engineer', level: 'Mid', type: 'Resume-Based', reqResume: true },
+  { label: '🏢 TCS (NQT/Digital)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'TCS NQT / Digital' },
+  { label: '🔷 Capgemini Technical', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Capgemini Technical' },
+  { label: '🏦 Banking & FinTech', role: 'Full Stack Engineer', level: 'Mid', type: 'Technical', domain: 'Banking & FinTech' },
+  { label: '💻 Frontend (React)', role: 'React Developer', level: 'Mid', type: 'Technical', domain: '' },
+  { label: '🐍 Backend (Python)', role: 'Python Developer', level: 'Mid', type: 'Technical', domain: '' },
+  { label: '⚡ Full Stack', role: 'Full Stack Developer', level: 'Mid', type: 'Technical', domain: '' },
+  { label: '👥 Behavioral (STAR)', role: 'Software Engineer', level: 'Mid', type: 'Behavioral', domain: '' },
+  { label: '📄 Resume Deep-Dive', role: 'Software Engineer', level: 'Mid', type: 'Resume-Based', reqResume: true, domain: '' },
 ];
 
 const Dashboard = () => {
@@ -109,6 +142,7 @@ const Dashboard = () => {
   const [customRole, setCustomRole] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('Entry');
   const [interviewType, setInterviewType] = useState('Technical');
+  const [companyDomain, setCompanyDomain] = useState('');
   const [creatingSession, setCreatingSession] = useState(false);
 
   const navigate = useNavigate();
@@ -225,7 +259,8 @@ const Dashboard = () => {
       const res = await API.post('/api/interviews', {
         role: selectedRole,
         experience_level: experienceLevel,
-        interview_type: interviewType
+        interview_type: interviewType,
+        company_domain: companyDomain || undefined
       });
       toast.success("Practice room configured. Entering session...", "Session Initialized");
       navigate(`/interview/${res.data.id}`);
@@ -241,10 +276,12 @@ const Dashboard = () => {
     setRole(preset.role);
     setExperienceLevel(preset.level);
     setInterviewType(preset.type);
+    setCompanyDomain(preset.domain || '');
   };
 
-  const handleQuickLaunch = (type) => {
+  const handleQuickLaunch = (type, domain = '') => {
     setInterviewType(type);
+    setCompanyDomain(domain);
     setIsModalOpen(true);
   };
 
@@ -382,7 +419,7 @@ const Dashboard = () => {
                         if (isResumeDisabled) {
                           navigate('/resume');
                         } else {
-                          handleQuickLaunch(track.type);
+                          handleQuickLaunch(track.type, track.company_domain);
                         }
                       }}
                       className={`p-4 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col justify-between hover:shadow-md hover:-translate-y-1 group bg-white/95 ${track.accent}`}
@@ -730,6 +767,23 @@ const Dashboard = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Company / Industry Domain Track */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-600">Company / Industry Domain</label>
+              <select
+                value={companyDomain}
+                onChange={(e) => setCompanyDomain(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs bg-white font-medium text-midnight"
+              >
+                <option value="">General / Standard Technical</option>
+                <option value="TCS NQT / Digital">🏢 TCS (NQT / Digital Technical Round)</option>
+                <option value="Capgemini Technical">🔷 Capgemini (Technical & Pseudo-code Round)</option>
+                <option value="Banking & FinTech">🏦 Banking & FinTech Systems (ACID, Microservices, Security)</option>
+                <option value="Cloud & DevOps">☁️ Cloud & DevOps (Kubernetes, IaC, CI/CD)</option>
+                <option value="AI & Data Engineering">🤖 AI & Data Engineering (ETL, Vectors, PyTorch)</option>
+              </select>
             </div>
 
             {/* Interview Type Selection */}

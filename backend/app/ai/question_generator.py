@@ -58,6 +58,38 @@ FALLBACK_QUESTIONS = {
             "Explain blue-green deployment and canary releases.",
         ],
     },
+    "TCS": [
+        "What is the difference between Call by Value and Call by Reference in C/C++ and Java?",
+        "Explain the concept of Method Overloading vs Method Overriding with a pseudocode example.",
+        "What are primary keys, foreign keys, and unique keys in SQL databases?",
+        "Explain the memory architecture in C/C++/Java (Stack memory vs Heap memory).",
+        "How would you find duplicate elements in an array with O(n) time complexity?",
+        "Explain ACID properties in database management system (DBMS).",
+        "What is the difference between static binding and dynamic binding in OOPs?",
+    ],
+    "Capgemini": [
+        "Explain the core 4 pillars of Object-Oriented Programming (OOPs) with practical examples.",
+        "What is the difference between Abstract Classes and Interfaces in Java/C++?",
+        "Explain how Exception Handling works using try, catch, finally, and throw blocks.",
+        "How would you reverse a linked list or string in-place without using extra space?",
+        "Explain SQL Joins (INNER, LEFT, RIGHT, FULL OUTER) with example tables.",
+        "What is the difference between String, StringBuilder, and StringBuffer in Java?",
+        "Explain how memory management and Garbage Collection operate in modern languages.",
+    ],
+    "Banking & FinTech": [
+        "In financial transaction processing, how do you ensure strict ACID compliance and prevent race conditions?",
+        "How would you design an idempotent payment processing API to handle network retries cleanly?",
+        "Explain the difference between Symmetric and Asymmetric encryption, and how HTTPS/TLS protects bank data.",
+        "How do you handle microservices transaction consistency across multiple databases (Saga Pattern vs 2PC)?",
+        "What strategies do you use for high-availability database replication and zero-downtime failover?",
+    ],
+    "Cloud & DevOps": [
+        "Explain the lifecycle of a Kubernetes Pod and how self-healing deployments work.",
+        "How do you secure secrets and sensitive API credentials in CI/CD pipelines?",
+        "Describe how Blue-Green and Canary deployment strategies minimize risk in production.",
+        "What is Infrastructure as Code (IaC) and how do Terraform state files manage infrastructure drift?",
+        "Explain reverse proxies (like NGINX) and load balancer algorithms (Round Robin, Least Connections).",
+    ],
     "HR": [
         "Tell me about yourself and why you are interested in this position.",
         "What are your greatest professional strengths and one area you are actively improving?",
@@ -80,11 +112,22 @@ def _get_fallback_questions(
     interview_type: str,
     num_questions: int,
     resume_text: Optional[str],
+    company_domain: Optional[str] = None,
 ) -> List[str]:
     """Return fallback questions from the hardcoded bank."""
     questions: List[str] = []
 
-    if interview_type == "Technical":
+    domain_str = (company_domain or "").lower()
+
+    if "tcs" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["TCS"])
+    elif "capgemini" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Capgemini"])
+    elif "banking" in domain_str or "fintech" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Banking & FinTech"])
+    elif "cloud" in domain_str or "devops" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Cloud & DevOps"])
+    elif interview_type == "Technical":
         # Find best matching role
         role_key = "Software Engineer"
         role_lower = role.lower()

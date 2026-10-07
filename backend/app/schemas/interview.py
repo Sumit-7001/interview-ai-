@@ -6,6 +6,7 @@ class InterviewCreate(BaseModel):
     role: str = Field(..., example="Software Engineer")
     experience_level: str = Field(..., example="Mid")  # Entry, Mid, Senior
     interview_type: str = Field(..., example="Technical")  # Technical, HR, Behavioral, Resume-Based, Mixed
+    company_domain: Optional[str] = Field(None, example="TCS NQT / Digital")
 
 class QuestionOut(BaseModel):
     id: int
@@ -24,6 +25,7 @@ class InterviewOut(BaseModel):
     role: str
     experience_level: str
     interview_type: str
+    company_domain: Optional[str] = None
     status: str
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

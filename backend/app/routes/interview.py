@@ -43,14 +43,16 @@ async def create_interview(
     
     # Load structured resume context for candidate
     resume_context = await get_or_create_resume_context(current_user["id"], db)
+    company_domain = payload.company_domain
     
-    # Generate dynamic opening question from candidate's resume
+    # Generate dynamic opening question from candidate's resume or domain
     try:
         opening_res = await generate_opening_question(
             role=payload.role,
             experience_level=payload.experience_level,
             interview_type=payload.interview_type,
             resume_context=resume_context,
+            company_domain=company_domain,
         )
         first_q_text = opening_res["question"]
         current_topic = opening_res["current_topic"]
@@ -75,6 +77,7 @@ async def create_interview(
         "role": payload.role,
         "experience_level": payload.experience_level,
         "interview_type": payload.interview_type,
+        "company_domain": company_domain,
         "current_topic": current_topic,
         "turns_on_topic": 1,
         "topics_discussed": [current_topic],
@@ -208,6 +211,7 @@ async def answer_question(
         topics_discussed=topics_discussed,
         current_difficulty=current_diff,
         question_number=question_id,
+        company_domain=interview.get("company_domain"),
     )
     evaluation = result["evaluation"]
     updated_topics = result.get("topics_discussed", topics_discussed)
