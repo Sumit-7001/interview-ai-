@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     FRONTEND_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # ── LLM Provider ──────────────────────────────────────────────────────────
-    # Set LLM_PROVIDER=ollama to use local Ollama instead of HuggingFace remote
-    LLM_PROVIDER: str = "huggingface"  # "huggingface" | "ollama"
+    # Options: "groq" (default when key set) | "huggingface" | "ollama"
+    LLM_PROVIDER: str = "groq"
+
+    # ── Groq (Ultra-fast cloud LLM & Whisper) ─────────────────────────────────
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "qwen/qwen3.8-27b"
+    GROQ_WHISPER_MODEL: str = "whisper-large-v3-turbo"
 
     # ── Ollama (local LLM) ────────────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"

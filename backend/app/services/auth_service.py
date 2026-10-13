@@ -53,15 +53,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        email: str = payload.get("sub")
-        user_id: str = payload.get("user_id")
-        if email is None or user_id is None:
+        email: Optional[str] = payload.get("sub")
+        user_id: Optional[str] = payload.get("user_id")
+        if not email and not user_id:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
     db = get_database()
-    user = await db["users"].find_one({"_id": ObjectId(user_id)})
+    user = None
+
+    if user_id and ObjectId.is_valid(user_id):
+        user = await db["users"].find_one({"_id": ObjectId(user_id)})
+
+    if not user and email:
+        user = await db["users"].find_one({"email": email.lower()})
+
     if user is None:
         raise credentials_exception
 

@@ -37,6 +37,7 @@ async def ai_health_check():
     Returns status labels: 'available' | 'loading' | 'unavailable' | 'mock'
     Never exposes tokens, model internal details, or stack traces.
     """
+    has_groq = bool(settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip())
     has_token = bool(settings.HF_TOKEN and settings.HF_TOKEN.strip())
     mock_mode = settings.AI_MOCK_MODE
 
@@ -51,6 +52,23 @@ async def ai_health_check():
             "mock_mode": True,
         }
 
+    if has_groq:
+        try:
+            from app.services.cv_service import CV_LIBS_AVAILABLE
+            emotion_status = "available" if CV_LIBS_AVAILABLE else "unavailable"
+        except Exception:
+            emotion_status = "unavailable"
+        return {
+            "llm": "available",
+            "fallback_llm": "available",
+            "whisper": "available",
+            "embedding": "available",
+            "emotion_detection": emotion_status,
+            "eye_contact": "available",
+            "provider": "groq",
+            "mock_mode": False,
+        }
+
     if not has_token:
         return {
             "llm": "unavailable",
@@ -60,7 +78,7 @@ async def ai_health_check():
             "emotion_detection": "checking",
             "eye_contact": "available",
             "mock_mode": False,
-            "note": "HF_TOKEN not configured. AI services running in fallback mode.",
+            "note": "AI keys not configured. AI services running in fallback mode.",
         }
 
     # Ping models concurrently

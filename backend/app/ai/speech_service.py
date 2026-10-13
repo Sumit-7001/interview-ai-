@@ -121,8 +121,10 @@ async def transcribe_audio_hf(
         if browser_transcript and browser_transcript.strip():
             logger.info("Using client-side browser transcript fallback: %s", browser_transcript)
             return browser_transcript.strip()
-        logger.info("Using smart mock fallback for question: %s", question_text)
-        return _smart_mock(question_text)
+        if settings.AI_MOCK_MODE:
+            logger.info("Using smart mock fallback for question: %s", question_text)
+            return _smart_mock(question_text)
+        return ""
 
     # Guard: empty file
     if not os.path.exists(audio_path):
@@ -134,9 +136,11 @@ async def transcribe_audio_hf(
         logger.warning("Audio file too small (%d bytes) — likely empty recording", file_size)
         return "(No audio captured — please check your microphone and try again.)"
 
-    # Guard: mock mode or no token
-    if settings.AI_MOCK_MODE or not settings.HF_TOKEN or not settings.HF_TOKEN.strip():
-        logger.info("Whisper: mock mode or no HF_TOKEN — using fallback transcript")
+    # Guard: mock mode or no tokens configured
+    has_groq = bool(settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip())
+    has_hf = bool(settings.HF_TOKEN and settings.HF_TOKEN.strip())
+    if settings.AI_MOCK_MODE or (not has_groq and not has_hf):
+        logger.info("Whisper: mock mode or no STT keys — using fallback transcript")
         return get_fallback()
 
     # Read audio bytes
@@ -147,15 +151,26 @@ async def transcribe_audio_hf(
         logger.error("Failed to read audio file %s: %s", audio_path, exc)
         return get_fallback()
 
-    # Call HF Whisper API
-    model = settings.HF_WHISPER_MODEL
-    logger.info("Transcribing %d bytes via %s", len(audio_bytes), model)
-    transcript = await hf_client.transcribe_audio(model, audio_bytes)
+    # 1. Try Groq Whisper (ultra-fast cloud STT)
+    if settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip():
+        from app.ai.groq_client import groq_client
+        model = settings.GROQ_WHISPER_MODEL
+        logger.info("Transcribing %d bytes via Groq %s", len(audio_bytes), model)
+        transcript = await groq_client.transcribe_audio(model, audio_bytes, os.path.basename(audio_path))
+        if transcript and transcript.strip():
+            logger.info("Groq Whisper transcription success: %d chars", len(transcript))
+            return transcript.strip()
+        logger.warning("Groq Whisper returned empty or failed, trying HF fallback")
 
-    if transcript and transcript.strip():
-        logger.info("Whisper transcription success: %d chars", len(transcript))
-        return transcript.strip()
+    # 2. Try HF Whisper API
+    if settings.HF_TOKEN and settings.HF_TOKEN.strip():
+        model = settings.HF_WHISPER_MODEL
+        logger.info("Transcribing %d bytes via HF %s", len(audio_bytes), model)
+        transcript = await hf_client.transcribe_audio(model, audio_bytes)
+        if transcript and transcript.strip():
+            logger.info("Whisper transcription success: %d chars", len(transcript))
+            return transcript.strip()
 
     # API returned empty or failed
-    logger.warning("Whisper returned empty transcript — using fallback")
+    logger.warning("All speech transcription providers returned empty — using fallback")
     return get_fallback()

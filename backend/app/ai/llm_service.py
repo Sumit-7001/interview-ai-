@@ -106,6 +106,25 @@ async def _call_ollama(prompt: str, max_new_tokens: int, temperature: float) -> 
     )
 
 
+async def _call_groq(prompt: str, max_new_tokens: int, temperature: float) -> Optional[str]:
+    """Call Groq Cloud LLM."""
+    if not settings.GROQ_API_KEY or not settings.GROQ_API_KEY.strip():
+        logger.warning("GROQ_API_KEY not configured — skipping Groq LLM call")
+        return None
+
+    from app.ai.groq_client import groq_client
+
+    model = settings.GROQ_MODEL
+    logger.info("Calling Groq LLM: %s", model)
+    result = await groq_client.generate_text(model, prompt, max_new_tokens, temperature)
+    if result is not None:
+        logger.info("Groq LLM responded successfully")
+        return result
+
+    logger.warning("Groq LLM call failed")
+    return None
+
+
 # ── Core LLM Caller ───────────────────────────────────────────────────────────
 
 async def call_llm(
@@ -117,8 +136,9 @@ async def call_llm(
     Call the configured LLM provider.
 
     Provider selection:
+      LLM_PROVIDER=groq        → Groq Cloud (default when GROQ_API_KEY set)
       LLM_PROVIDER=ollama      → Ollama local (no internet needed)
-      LLM_PROVIDER=huggingface → HuggingFace remote API (default)
+      LLM_PROVIDER=huggingface → HuggingFace remote API
 
     Returns raw text from the model, or None if all providers fail.
     """
@@ -126,7 +146,15 @@ async def call_llm(
         logger.info("AI_MOCK_MODE is enabled — skipping real LLM call")
         return None
 
-    provider = (settings.LLM_PROVIDER or "huggingface").lower().strip()
+    provider = (settings.LLM_PROVIDER or "groq").lower().strip()
+
+    # Prioritize Groq if configured
+    if provider == "groq" or (settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip()):
+        logger.info("LLM provider: Groq (%s)", settings.GROQ_MODEL)
+        result = await _call_groq(prompt, max_new_tokens, temperature)
+        if result is not None:
+            return result
+        logger.warning("Groq failed — attempting fallback providers")
 
     if provider == "ollama":
         logger.info("LLM provider: Ollama (%s)", settings.OLLAMA_MODEL)
@@ -138,7 +166,7 @@ async def call_llm(
         return await _call_hf(prompt, max_new_tokens, temperature)
 
     else:
-        # Default: HuggingFace
+        # HuggingFace fallback
         logger.info("LLM provider: HuggingFace")
         return await _call_hf(prompt, max_new_tokens, temperature)
 

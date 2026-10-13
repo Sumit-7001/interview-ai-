@@ -75,8 +75,16 @@ async def _authenticate_ws(token: Optional[str]) -> Optional[dict]:
         return None
     try:
         payload = decode_token(token)
+        email = payload.get("sub")
+        user_id = payload.get("user_id")
+        if not email and not user_id:
+            return None
         db = get_database()
-        user = await db["users"].find_one({"email": payload.get("sub")})
+        user = None
+        if user_id and ObjectId.is_valid(user_id):
+            user = await db["users"].find_one({"_id": ObjectId(user_id)})
+        if not user and email:
+            user = await db["users"].find_one({"email": email.lower()})
         if user:
             user["id"] = str(user["_id"])
         return user
