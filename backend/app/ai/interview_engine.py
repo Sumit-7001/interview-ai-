@@ -103,9 +103,45 @@ async def generate_opening_question(
     if "tcs" in domain_str:
         fallback_q = "Welcome to the TCS Technical Round! Can you explain the difference between Call by Value and Call by Reference in programming languages, and how memory (Stack vs Heap) is managed?"
         topic = "TCS Core Technical & Memory Management"
+    elif "wipro" in domain_str:
+        fallback_q = "Welcome to the Wipro Technical Assessment! Can you explain the difference between method overloading and overriding in OOP, and how garbage collection operates in your primary language?"
+        topic = "Wipro Core Technical & OOP"
+    elif "infosys" in domain_str:
+        fallback_q = "Welcome to the Infosys Technical Round! Can you explain how you analyze algorithm complexity with Big-O notation, and how database indexes optimize query execution?"
+        topic = "Infosys Technical & Algorithmic Analysis"
     elif "capgemini" in domain_str:
         fallback_q = "Welcome to the Capgemini Technical Round! Can you walk me through the 4 core pillars of Object-Oriented Programming (OOPs) and explain how Polymorphism is implemented with a practical example?"
         topic = "Capgemini OOPs & Technical Fundamentals"
+    elif "accenture" in domain_str:
+        fallback_q = "Welcome to the Accenture Technical Assessment! Can you explain RESTful API design principles, and how microservices manage state and distributed transactions?"
+        topic = "Accenture System Design & API Architecture"
+    elif "cognizant" in domain_str:
+        fallback_q = "Welcome to the Cognizant Technical Round! Can you walk me through the lifecycle of an application request from client to database, and explain how multi-threading and concurrency are managed?"
+        topic = "Cognizant Application Flow & Concurrency"
+    elif "dsa" in domain_str or "algorithm" in domain_str:
+        fallback_q = "Welcome to the Data Structures & Algorithms Track! Can you explain how hash tables resolve collisions, and walk me through an optimal approach to detect a cycle in a linked list?"
+        topic = "DSA & Algorithmic Complexity"
+    elif "dbms" in domain_str or "database" in domain_str:
+        fallback_q = "Welcome to the Database Management Systems (DBMS) Track! Can you explain ACID transactions, the difference between clustered and non-clustered indexes, and how normalization eliminates data redundancy?"
+        topic = "DBMS & Relational Architecture"
+    elif "operating system" in domain_str or "os" == domain_str:
+        fallback_q = "Welcome to the Operating Systems Track! Can you explain the fundamental differences between a process and a thread, and describe the 4 Coffman conditions required for a deadlock?"
+        topic = "Operating Systems & Concurrency"
+    elif "oop" in domain_str or "object" in domain_str:
+        fallback_q = "Welcome to the Object-Oriented Programming (OOP) Track! Can you explain the 4 fundamental pillars of OOP — Abstraction, Encapsulation, Inheritance, and Polymorphism — with real-world examples?"
+        topic = "OOP Principles & Design Patterns"
+    elif "web" in domain_str or "frontend" in domain_str:
+        fallback_q = "Welcome to the Web Development Track! Can you explain the Critical Rendering Path in modern web browsers, how the DOM is constructed, and state management strategies in modern web apps?"
+        topic = "Web Architecture & Frontend Systems"
+    elif "machine learning" in domain_str or "ml" in domain_str or "ai" in domain_str:
+        fallback_q = "Welcome to the Machine Learning Track! Can you explain the bias-variance tradeoff, how gradient descent optimizes neural weights, and techniques to prevent overfitting?"
+        topic = "Machine Learning & Model Optimization"
+    elif "python" in domain_str:
+        fallback_q = "Welcome to the Python Technical Track! Can you explain Python's Global Interpreter Lock (GIL), memory management via reference counting, and when to use generators vs list comprehensions?"
+        topic = "Python Internals & Execution"
+    elif "java" in domain_str:
+        fallback_q = "Welcome to the Java Technical Track! Can you explain JVM architecture (Heap vs Stack), garbage collection algorithms, and how String immutability is implemented?"
+        topic = "Java JVM Architecture & Memory"
     elif "banking" in domain_str or "fintech" in domain_str:
         fallback_q = "Welcome to the Banking & FinTech Domain Track! In financial transaction processing, data integrity is paramount. Can you explain ACID properties and how you handle race conditions during concurrent account transfers?"
         topic = "Banking System Security & ACID Integrity"

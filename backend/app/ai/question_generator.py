@@ -90,6 +90,102 @@ FALLBACK_QUESTIONS = {
         "What is Infrastructure as Code (IaC) and how do Terraform state files manage infrastructure drift?",
         "Explain reverse proxies (like NGINX) and load balancer algorithms (Round Robin, Least Connections).",
     ],
+    "Wipro": [
+        "Explain the differences between procedural programming and Object-Oriented Programming (OOPs).",
+        "What are the differences between method overloading and method overriding in Java/C++?",
+        "How does garbage collection work in modern managed runtimes, and can you force garbage collection?",
+        "Explain linear data structures versus non-linear data structures with practical use cases.",
+        "What are aggregate functions in SQL and how do GROUP BY and HAVING clauses differ?",
+        "How would you detect if a string is an anagram of another string in optimal time complexity?",
+    ],
+    "Infosys": [
+        "Explain the difference between binary search and linear search. What are the prerequisites for binary search?",
+        "What are database indexes, and how do B-Trees optimize data retrieval?",
+        "Explain the difference between abstract classes and interfaces in Java 8+.",
+        "Describe the concept of recursion and how stack overflow occurs if base conditions are missing.",
+        "What is normalisation in relational databases, and why do we normalize up to 3NF?",
+        "How do you find the second largest element in an unsorted array in single traversal (O(n))?",
+    ],
+    "Accenture": [
+        "Explain the architectural differences between Monolithic and Microservices architectures.",
+        "What is the difference between synchronous and asynchronous communication in distributed systems?",
+        "Explain RESTful API design principles, idempotency of HTTP methods, and status codes.",
+        "What is the role of caching layers (like Redis or Memcached) and how do cache eviction policies work?",
+        "How do relational databases maintain ACID transactions during concurrent multi-user writes?",
+        "Explain the Singleton design pattern and how to make it thread-safe.",
+    ],
+    "Cognizant": [
+        "Explain how memory is allocated for variables and objects in Stack memory versus Heap memory.",
+        "What are the differences between SQL and NoSQL databases, and when is MongoDB preferred over MySQL?",
+        "Explain the concept of multithreading, race conditions, and how thread synchronization prevents deadlocks.",
+        "How do you implement binary tree traversals (Inorder, Preorder, Postorder) iteratively and recursively?",
+        "What is the purpose of database transactions and what is the difference between COMMIT and ROLLBACK?",
+        "Explain the difference between compile-time errors, run-time errors, and logical errors.",
+    ],
+    "Python": [
+        "Explain the Global Interpreter Lock (GIL) in CPython and how it affects CPU-bound vs I/O-bound tasks.",
+        "What are Python generators and iterators? How does the 'yield' keyword differ from 'return'?",
+        "Explain how memory management and cyclic garbage collection work in Python.",
+        "What are decorators in Python and how do you write a decorator with arguments?",
+        "Explain *args, **kwargs, and how argument unpacking operates in function definitions.",
+        "What is the difference between deepcopy and shallow copy in Python?",
+    ],
+    "Java": [
+        "Explain the internal architecture of the JVM, including ClassLoader, JVM Memory Areas, and Execution Engine.",
+        "What is the difference between String, StringBuilder, and StringBuffer in terms of mutability and thread safety?",
+        "How does the Java Collections Framework organize List, Set, and Map? How does HashMap resolve collisions in Java 8+?",
+        "Explain how Exception Handling works with try-with-resources and custom checked/unchecked exceptions.",
+        "What are Java Streams and Lambda expressions? Explain the difference between intermediate and terminal operations.",
+        "Explain the concept of volatile keyword and synchronized blocks in multithreading.",
+    ],
+    "DSA": [
+        "Explain how hash tables achieve average O(1) time complexity and compare chaining vs open addressing for collision resolution.",
+        "How would you detect and remove a cycle in a singly linked list (Floyd's Cycle-Finding Algorithm)?",
+        "Explain the difference between Breadth-First Search (BFS) and Depth-First Search (DFS) with time/space complexities.",
+        "What is dynamic programming and how do memoization (top-down) and tabulation (bottom-up) compare?",
+        "Explain the difference between QuickSort and MergeSort. Which one is stable and why?",
+        "How does a Binary Search Tree (BST) differ from a balanced AVL or Red-Black Tree?",
+    ],
+    "DBMS": [
+        "Explain the 4 ACID properties in DBMS and what isolation levels prevent dirty reads and phantom reads.",
+        "What is the difference between Clustered and Non-Clustered Indexes in relational databases?",
+        "Explain Database Normalization from 1NF, 2NF, 3NF to BCNF with concrete schema examples.",
+        "What are SQL Joins (INNER, LEFT, RIGHT, FULL OUTER, CROSS)? Write an example of a self-join.",
+        "Explain the difference between optimistic concurrency control and pessimistic locking in databases.",
+        "What is database sharding versus replication, and how do read replicas scale query throughput?",
+    ],
+    "Operating Systems": [
+        "Explain the core differences between a Process and a Thread, and what resources are shared between threads.",
+        "What is Virtual Memory, paging, and how does page fault handling work with TLB?",
+        "Explain the 4 Coffman conditions required for a Deadlock to occur and how deadlock prevention works.",
+        "Compare CPU scheduling algorithms: First-Come-First-Served, Round Robin, and Shortest Job First.",
+        "What is a system call, and what transitions occur between user mode and kernel mode?",
+        "Explain Inter-Process Communication (IPC) mechanisms such as pipes, message queues, and shared memory.",
+    ],
+    "OOP": [
+        "Walk me through the 4 fundamental pillars of OOP — Abstraction, Encapsulation, Inheritance, and Polymorphism.",
+        "Explain the difference between Abstraction and Encapsulation with real-world examples.",
+        "What are SOLID design principles? Explain the Single Responsibility Principle and Open/Closed Principle.",
+        "What is the difference between Composition and Inheritance? Why is composition often favored?",
+        "Explain Method Overloading (Compile-time polymorphism) vs Method Overriding (Run-time polymorphism).",
+        "What is an abstract class and how does it differ from an interface?",
+    ],
+    "Web Development": [
+        "Explain the Critical Rendering Path: what happens from the moment a browser enters a URL to pixels on screen?",
+        "What is the DOM and Virtual DOM? How do modern frontend frameworks optimize UI re-rendering?",
+        "Explain the differences between Cookies, SessionStorage, and LocalStorage, and how CORS protects web apps.",
+        "What are WebSockets and how do they differ from HTTP Long Polling and Server-Sent Events (SSE)?",
+        "How do you optimize web application performance (lazy loading, code splitting, asset compression, CDN)?",
+        "Explain common web security vulnerabilities such as Cross-Site Scripting (XSS) and CSRF, and how to mitigate them.",
+    ],
+    "Machine Learning": [
+        "Explain the bias-variance tradeoff and what techniques you use to prevent model overfitting.",
+        "How does Gradient Descent work, and what are the differences between Batch, Mini-batch, and Stochastic Gradient Descent?",
+        "Explain the difference between classification metrics: Precision, Recall, F1-Score, and ROC-AUC.",
+        "What is the difference between L1 (Lasso) and L2 (Ridge) regularization, and how do they affect model weights?",
+        "Explain the difference between supervised, unsupervised, and reinforcement learning with examples.",
+        "What is transfer learning in deep learning and when would you fine-tune a pre-trained transformer model?",
+    ],
     "HR": [
         "Tell me about yourself and why you are interested in this position.",
         "What are your greatest professional strengths and one area you are actively improving?",
@@ -121,12 +217,38 @@ def _get_fallback_questions(
 
     if "tcs" in domain_str:
         questions = list(FALLBACK_QUESTIONS["TCS"])
+    elif "wipro" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Wipro"])
+    elif "infosys" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Infosys"])
     elif "capgemini" in domain_str:
         questions = list(FALLBACK_QUESTIONS["Capgemini"])
+    elif "accenture" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Accenture"])
+    elif "cognizant" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Cognizant"])
     elif "banking" in domain_str or "fintech" in domain_str:
         questions = list(FALLBACK_QUESTIONS["Banking & FinTech"])
     elif "cloud" in domain_str or "devops" in domain_str:
         questions = list(FALLBACK_QUESTIONS["Cloud & DevOps"])
+    elif "dsa" in domain_str or "algorithm" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["DSA"])
+    elif "dbms" in domain_str or "database" in domain_str or "sql" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["DBMS"])
+    elif "operating system" in domain_str or "os" == domain_str:
+        questions = list(FALLBACK_QUESTIONS["Operating Systems"])
+    elif "oop" in domain_str or "object" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["OOP"])
+    elif "web" in domain_str or "frontend" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Web Development"])
+    elif "machine learning" in domain_str or "ml" in domain_str or "ai" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Machine Learning"])
+    elif "python" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Python"])
+    elif "java" in domain_str:
+        questions = list(FALLBACK_QUESTIONS["Java"])
+    elif "hr" in domain_str or "behavioral" in domain_str or interview_type in ("HR", "Behavioral"):
+        questions = list(FALLBACK_QUESTIONS.get(interview_type, FALLBACK_QUESTIONS["HR"]))
     elif interview_type == "Technical":
         # Find best matching role
         role_key = "Software Engineer"

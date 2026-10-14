@@ -12,6 +12,7 @@ import ResumePage from './pages/ResumePage';
 import InterviewHistory from './pages/InterviewHistory';
 import InterviewRoom from './pages/InterviewRoom';
 import ReportPage from './pages/ReportPage';
+import QuestionBank from './pages/QuestionBank';
 
 // Private Route Wrapper
 const PrivateRoute = ({ children }) => {
@@ -65,6 +66,8 @@ function App() {
             
             {/* Protected Candidate Dashboard & Operations */}
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/question-bank" element={<PrivateRoute><QuestionBank /></PrivateRoute>} />
+            <Route path="/questions" element={<Navigate to="/question-bank" replace />} />
             <Route path="/resume" element={<PrivateRoute><ResumePage /></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><InterviewHistory /></PrivateRoute>} />
             <Route path="/interview/:id" element={<PrivateRoute><InterviewRoom /></PrivateRoute>} />

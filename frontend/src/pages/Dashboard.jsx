@@ -24,8 +24,40 @@ import {
   LayoutGrid,
   Activity,
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  Building2,
+  Database,
+  Layers,
+  Search,
+  X,
+  BookOpen
 } from 'lucide-react';
+import { 
+  TCSLogo, 
+  WiproLogo, 
+  InfosysLogo, 
+  CapgeminiLogo, 
+  AccentureLogo, 
+  CognizantLogo,
+  AmazonLogo,
+  MicrosoftLogo,
+  GoogleLogo,
+  DeloitteLogo,
+  HCLLogo,
+  TechMahindraLogo,
+  PythonIcon,
+  JavaIcon,
+  DSAIcon,
+  DBMSIcon,
+  OSIcon,
+  OOPIcon,
+  WebDevIcon,
+  MLIcon,
+  HRIcon,
+  CloudIcon,
+  SystemDesignIcon,
+  NetworksIcon
+} from '../components/CompanyDomainIcons';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import Sidebar from '../components/Sidebar';
@@ -117,15 +149,463 @@ const QUICK_TRACKS = [
   }
 ];
 
+const COMPANIES = [
+  {
+    id: 'tcs',
+    name: 'TCS',
+    fullName: 'Tata Consultancy Services',
+    count: '300+ Q&A',
+    Logo: TCSLogo,
+    domain: 'TCS NQT / Digital',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'NQT & Digital',
+    gradient: 'from-rose-500/[0.09] via-purple-500/[0.04] to-blue-500/[0.08]',
+    hoverGradient: 'group-hover:from-rose-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-rose-200/80 hover:border-rose-400',
+    badgeBg: 'bg-rose-100 text-rose-700 border-rose-200/70',
+    topBar: 'from-rose-500 via-pink-500 to-blue-600',
+    glow: 'hover:shadow-rose-500/15',
+    btnGradient: 'from-rose-500 to-blue-600'
+  },
+  {
+    id: 'wipro',
+    name: 'Wipro',
+    fullName: 'Wipro Technologies',
+    count: '250+ Q&A',
+    Logo: WiproLogo,
+    domain: 'Wipro Elite & Turbo',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'Elite & Turbo',
+    gradient: 'from-emerald-500/[0.09] via-amber-500/[0.04] to-cyan-500/[0.08]',
+    hoverGradient: 'group-hover:from-emerald-500/[0.15] group-hover:to-cyan-500/[0.15]',
+    border: 'border-emerald-200/80 hover:border-emerald-400',
+    badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200/70',
+    topBar: 'from-emerald-500 via-amber-500 to-cyan-500',
+    glow: 'hover:shadow-emerald-500/15',
+    btnGradient: 'from-emerald-500 to-teal-600'
+  },
+  {
+    id: 'infosys',
+    name: 'Infosys',
+    fullName: 'Infosys Limited',
+    count: '250+ Q&A',
+    Logo: InfosysLogo,
+    domain: 'Infosys DSE / Specialist',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'DSE & Specialist',
+    gradient: 'from-sky-500/[0.09] via-blue-500/[0.04] to-indigo-500/[0.08]',
+    hoverGradient: 'group-hover:from-sky-500/[0.15] group-hover:to-indigo-500/[0.15]',
+    border: 'border-sky-200/80 hover:border-sky-400',
+    badgeBg: 'bg-sky-100 text-sky-800 border-sky-200/70',
+    topBar: 'from-sky-400 via-blue-500 to-indigo-600',
+    glow: 'hover:shadow-sky-500/15',
+    btnGradient: 'from-sky-500 to-blue-600'
+  },
+  {
+    id: 'capgemini',
+    name: 'Capgemini',
+    fullName: 'Capgemini Technology Services',
+    count: '200+ Q&A',
+    Logo: CapgeminiLogo,
+    domain: 'Capgemini Technical',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'Technical Track',
+    gradient: 'from-cyan-500/[0.09] via-blue-500/[0.04] to-slate-500/[0.08]',
+    hoverGradient: 'group-hover:from-cyan-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-cyan-200/80 hover:border-cyan-400',
+    badgeBg: 'bg-cyan-100 text-cyan-800 border-cyan-200/70',
+    topBar: 'from-cyan-400 via-teal-500 to-blue-600',
+    glow: 'hover:shadow-cyan-500/15',
+    btnGradient: 'from-cyan-500 to-teal-600'
+  },
+  {
+    id: 'accenture',
+    name: 'Accenture',
+    fullName: 'Accenture Solutions',
+    count: '250+ Q&A',
+    Logo: AccentureLogo,
+    domain: 'Accenture Cognitive & Technical',
+    defaultRole: 'Software Engineer',
+    category: 'Consulting',
+    tag: 'Cognitive & Tech',
+    gradient: 'from-purple-500/[0.09] via-violet-500/[0.04] to-fuchsia-500/[0.08]',
+    hoverGradient: 'group-hover:from-purple-500/[0.15] group-hover:to-fuchsia-500/[0.15]',
+    border: 'border-purple-200/80 hover:border-purple-400',
+    badgeBg: 'bg-purple-100 text-purple-800 border-purple-200/70',
+    topBar: 'from-purple-500 via-violet-500 to-fuchsia-500',
+    glow: 'hover:shadow-purple-500/15',
+    btnGradient: 'from-purple-600 to-fuchsia-600'
+  },
+  {
+    id: 'cognizant',
+    name: 'Cognizant',
+    fullName: 'Cognizant Technology Solutions',
+    count: '250+ Q&A',
+    Logo: CognizantLogo,
+    domain: 'Cognizant GenC & GenC Next',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'GenC Next Track',
+    gradient: 'from-blue-500/[0.09] via-indigo-500/[0.04] to-teal-500/[0.08]',
+    hoverGradient: 'group-hover:from-blue-500/[0.15] group-hover:to-teal-500/[0.15]',
+    border: 'border-blue-200/80 hover:border-blue-400',
+    badgeBg: 'bg-blue-100 text-blue-800 border-blue-200/70',
+    topBar: 'from-blue-600 via-indigo-600 to-teal-500',
+    glow: 'hover:shadow-blue-500/15',
+    btnGradient: 'from-blue-600 to-indigo-600'
+  },
+];
+
+const ALL_COMPANIES = [
+  ...COMPANIES,
+  {
+    id: 'amazon',
+    name: 'Amazon',
+    fullName: 'Amazon Web Services / Retail',
+    count: '450+ Q&A',
+    Logo: AmazonLogo,
+    domain: 'Amazon SDE Track',
+    defaultRole: 'Software Engineer',
+    category: 'Product-Based',
+    tag: 'Leadership & SDE',
+    gradient: 'from-amber-500/[0.09] via-orange-500/[0.04] to-slate-500/[0.08]',
+    hoverGradient: 'group-hover:from-amber-500/[0.15] group-hover:to-orange-500/[0.15]',
+    border: 'border-amber-200/80 hover:border-amber-400',
+    badgeBg: 'bg-amber-100 text-amber-800 border-amber-200/70',
+    topBar: 'from-amber-500 to-orange-500',
+    glow: 'hover:shadow-amber-500/15',
+    btnGradient: 'from-amber-500 to-orange-600'
+  },
+  {
+    id: 'microsoft',
+    name: 'Microsoft',
+    fullName: 'Microsoft Corporation',
+    count: '400+ Q&A',
+    Logo: MicrosoftLogo,
+    domain: 'Microsoft Software Engineer',
+    defaultRole: 'Software Engineer',
+    category: 'Product-Based',
+    tag: 'Systems & SWE',
+    gradient: 'from-blue-500/[0.09] via-emerald-500/[0.04] to-rose-500/[0.08]',
+    hoverGradient: 'group-hover:from-blue-500/[0.15] group-hover:to-rose-500/[0.15]',
+    border: 'border-blue-200/80 hover:border-blue-400',
+    badgeBg: 'bg-blue-100 text-blue-800 border-blue-200/70',
+    topBar: 'from-blue-500 via-emerald-500 to-rose-500',
+    glow: 'hover:shadow-blue-500/15',
+    btnGradient: 'from-blue-500 to-emerald-600'
+  },
+  {
+    id: 'google',
+    name: 'Google',
+    fullName: 'Google / Alphabet',
+    count: '450+ Q&A',
+    Logo: GoogleLogo,
+    domain: 'Google SWE Track',
+    defaultRole: 'Software Engineer',
+    category: 'Product-Based',
+    tag: 'DSA & Scalability',
+    gradient: 'from-red-500/[0.09] via-amber-500/[0.04] to-emerald-500/[0.08]',
+    hoverGradient: 'group-hover:from-red-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-red-200/80 hover:border-red-400',
+    badgeBg: 'bg-red-100 text-red-800 border-red-200/70',
+    topBar: 'from-blue-500 via-red-500 to-amber-500',
+    glow: 'hover:shadow-red-500/15',
+    btnGradient: 'from-blue-500 to-emerald-500'
+  },
+  {
+    id: 'deloitte',
+    name: 'Deloitte',
+    fullName: 'Deloitte USI / Consulting',
+    count: '220+ Q&A',
+    Logo: DeloitteLogo,
+    domain: 'Deloitte Tech Analyst',
+    defaultRole: 'Software Engineer',
+    category: 'Consulting',
+    tag: 'Tech Advisory',
+    gradient: 'from-lime-500/[0.09] via-emerald-500/[0.04] to-slate-500/[0.08]',
+    hoverGradient: 'group-hover:from-lime-500/[0.15] group-hover:to-emerald-500/[0.15]',
+    border: 'border-lime-200/80 hover:border-lime-400',
+    badgeBg: 'bg-lime-100 text-lime-800 border-lime-200/70',
+    topBar: 'from-lime-500 to-emerald-600',
+    glow: 'hover:shadow-lime-500/15',
+    btnGradient: 'from-lime-600 to-emerald-600'
+  },
+  {
+    id: 'hcl',
+    name: 'HCLTech',
+    fullName: 'HCL Technologies',
+    count: '200+ Q&A',
+    Logo: HCLLogo,
+    domain: 'HCL Software Engineer',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'Engineering Track',
+    gradient: 'from-cyan-500/[0.09] via-blue-500/[0.04] to-indigo-500/[0.08]',
+    hoverGradient: 'group-hover:from-cyan-500/[0.15] group-hover:to-indigo-500/[0.15]',
+    border: 'border-cyan-200/80 hover:border-cyan-400',
+    badgeBg: 'bg-cyan-100 text-cyan-800 border-cyan-200/70',
+    topBar: 'from-cyan-500 to-blue-600',
+    glow: 'hover:shadow-cyan-500/15',
+    btnGradient: 'from-cyan-500 to-blue-600'
+  },
+  {
+    id: 'techm',
+    name: 'Tech Mahindra',
+    fullName: 'Tech Mahindra Ltd',
+    count: '200+ Q&A',
+    Logo: TechMahindraLogo,
+    domain: 'Tech Mahindra Tech Track',
+    defaultRole: 'Software Engineer',
+    category: 'Service-Based',
+    tag: 'Digital Core',
+    gradient: 'from-rose-500/[0.09] via-red-500/[0.04] to-slate-500/[0.08]',
+    hoverGradient: 'group-hover:from-rose-500/[0.15] group-hover:to-red-500/[0.15]',
+    border: 'border-rose-200/80 hover:border-rose-400',
+    badgeBg: 'bg-rose-100 text-rose-800 border-rose-200/70',
+    topBar: 'from-rose-500 to-red-600',
+    glow: 'hover:shadow-rose-500/15',
+    btnGradient: 'from-rose-500 to-red-600'
+  },
+];
+
+const DOMAINS = [
+  {
+    id: 'python',
+    name: 'Python',
+    subtitle: 'Core & Scripts',
+    count: '400+ Q&A',
+    Icon: PythonIcon,
+    domain: 'Python',
+    defaultRole: 'Python Developer',
+    interviewType: 'Technical',
+    gradient: 'from-blue-500/[0.09] via-sky-500/[0.04] to-amber-500/[0.08]',
+    hoverGradient: 'group-hover:from-blue-500/[0.15] group-hover:to-amber-500/[0.15]',
+    border: 'border-blue-200/80 hover:border-blue-400',
+    topBar: 'from-blue-500 via-sky-400 to-amber-400',
+    glow: 'hover:shadow-blue-500/15',
+    badgeBg: 'bg-blue-100 text-blue-700 border-blue-200/70',
+    iconBorder: 'border-blue-100',
+    btnGradient: 'from-blue-500 to-amber-500'
+  },
+  {
+    id: 'java',
+    name: 'Java',
+    subtitle: 'OOP & JVM Arch',
+    count: '350+ Q&A',
+    Icon: JavaIcon,
+    domain: 'Java',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-red-500/[0.09] via-orange-500/[0.04] to-rose-500/[0.08]',
+    hoverGradient: 'group-hover:from-red-500/[0.15] group-hover:to-rose-500/[0.15]',
+    border: 'border-red-200/80 hover:border-red-400',
+    topBar: 'from-red-500 via-orange-400 to-rose-500',
+    glow: 'hover:shadow-red-500/15',
+    badgeBg: 'bg-red-100 text-red-700 border-red-200/70',
+    iconBorder: 'border-red-100',
+    btnGradient: 'from-red-500 to-orange-500'
+  },
+  {
+    id: 'dsa',
+    name: 'DSA',
+    subtitle: 'Algorithms & Tree',
+    count: '500+ Q&A',
+    Icon: DSAIcon,
+    domain: 'DSA',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-emerald-500/[0.09] via-teal-500/[0.04] to-green-500/[0.08]',
+    hoverGradient: 'group-hover:from-emerald-500/[0.15] group-hover:to-green-500/[0.15]',
+    border: 'border-emerald-200/80 hover:border-emerald-400',
+    topBar: 'from-emerald-400 via-teal-500 to-green-600',
+    glow: 'hover:shadow-emerald-500/15',
+    badgeBg: 'bg-emerald-100 text-emerald-700 border-emerald-200/70',
+    iconBorder: 'border-emerald-100',
+    btnGradient: 'from-emerald-500 to-teal-600'
+  },
+  {
+    id: 'dbms',
+    name: 'DBMS',
+    subtitle: 'SQL & Indexing',
+    count: '300+ Q&A',
+    Icon: DBMSIcon,
+    domain: 'DBMS',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-pink-500/[0.09] via-rose-500/[0.04] to-purple-500/[0.08]',
+    hoverGradient: 'group-hover:from-pink-500/[0.15] group-hover:to-purple-500/[0.15]',
+    border: 'border-pink-200/80 hover:border-pink-400',
+    topBar: 'from-pink-500 via-rose-400 to-purple-500',
+    glow: 'hover:shadow-pink-500/15',
+    badgeBg: 'bg-pink-100 text-pink-700 border-pink-200/70',
+    iconBorder: 'border-pink-100',
+    btnGradient: 'from-pink-500 to-rose-600'
+  },
+  {
+    id: 'os',
+    name: 'Operating Systems',
+    subtitle: 'Threads & Memory',
+    count: '300+ Q&A',
+    Icon: OSIcon,
+    domain: 'Operating Systems',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-purple-500/[0.09] via-violet-500/[0.04] to-indigo-500/[0.08]',
+    hoverGradient: 'group-hover:from-purple-500/[0.15] group-hover:to-indigo-500/[0.15]',
+    border: 'border-purple-200/80 hover:border-purple-400',
+    topBar: 'from-purple-500 via-violet-400 to-indigo-600',
+    glow: 'hover:shadow-purple-500/15',
+    badgeBg: 'bg-purple-100 text-purple-700 border-purple-200/70',
+    iconBorder: 'border-purple-100',
+    btnGradient: 'from-purple-500 to-violet-600'
+  },
+  {
+    id: 'oop',
+    name: 'OOP',
+    subtitle: '4 Pillars & SOLID',
+    count: '250+ Q&A',
+    Icon: OOPIcon,
+    domain: 'OOP',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-amber-500/[0.09] via-yellow-500/[0.04] to-orange-500/[0.08]',
+    hoverGradient: 'group-hover:from-amber-500/[0.15] group-hover:to-orange-500/[0.15]',
+    border: 'border-amber-200/80 hover:border-amber-400',
+    topBar: 'from-amber-400 via-yellow-500 to-orange-500',
+    glow: 'hover:shadow-amber-500/15',
+    badgeBg: 'bg-amber-100 text-amber-700 border-amber-200/70',
+    iconBorder: 'border-amber-100',
+    btnGradient: 'from-amber-500 to-orange-600'
+  },
+  {
+    id: 'web',
+    name: 'Web Development',
+    subtitle: 'React, Node & API',
+    count: '300+ Q&A',
+    Icon: WebDevIcon,
+    domain: 'Web Development',
+    defaultRole: 'Full Stack Developer',
+    interviewType: 'Technical',
+    gradient: 'from-cyan-500/[0.09] via-sky-500/[0.04] to-blue-500/[0.08]',
+    hoverGradient: 'group-hover:from-cyan-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-cyan-200/80 hover:border-cyan-400',
+    topBar: 'from-cyan-400 via-sky-500 to-blue-600',
+    glow: 'hover:shadow-cyan-500/15',
+    badgeBg: 'bg-cyan-100 text-cyan-700 border-cyan-200/70',
+    iconBorder: 'border-cyan-100',
+    btnGradient: 'from-cyan-500 to-blue-600'
+  },
+  {
+    id: 'ml',
+    name: 'Machine Learning',
+    subtitle: 'Neural Nets & AI',
+    count: '300+ Q&A',
+    Icon: MLIcon,
+    domain: 'Machine Learning',
+    defaultRole: 'Machine Learning Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-fuchsia-500/[0.09] via-pink-500/[0.04] to-purple-500/[0.08]',
+    hoverGradient: 'group-hover:from-fuchsia-500/[0.15] group-hover:to-purple-500/[0.15]',
+    border: 'border-fuchsia-200/80 hover:border-fuchsia-400',
+    topBar: 'from-fuchsia-500 via-pink-400 to-purple-600',
+    glow: 'hover:shadow-fuchsia-500/15',
+    badgeBg: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200/70',
+    iconBorder: 'border-fuchsia-100',
+    btnGradient: 'from-fuchsia-500 to-purple-600'
+  },
+  {
+    id: 'hr',
+    name: 'HR & Behavioral',
+    subtitle: 'STAR Leadership',
+    count: '250+ Q&A',
+    Icon: HRIcon,
+    domain: 'HR & Behavioral',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Behavioral',
+    gradient: 'from-indigo-500/[0.09] via-violet-500/[0.04] to-blue-500/[0.08]',
+    hoverGradient: 'group-hover:from-indigo-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-indigo-200/80 hover:border-indigo-400',
+    topBar: 'from-indigo-500 via-violet-400 to-blue-600',
+    glow: 'hover:shadow-indigo-500/15',
+    badgeBg: 'bg-indigo-100 text-indigo-700 border-indigo-200/70',
+    iconBorder: 'border-indigo-100',
+    btnGradient: 'from-indigo-500 to-violet-600'
+  },
+];
+
+const ALL_DOMAINS = [
+  ...DOMAINS,
+  {
+    id: 'cloud',
+    name: 'Cloud & DevOps',
+    subtitle: 'Docker, CI/CD & AWS',
+    count: '320+ Q&A',
+    Icon: CloudIcon,
+    domain: 'Cloud & DevOps',
+    defaultRole: 'DevOps Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-sky-500/[0.09] via-cyan-500/[0.04] to-blue-500/[0.08]',
+    hoverGradient: 'group-hover:from-sky-500/[0.15] group-hover:to-blue-500/[0.15]',
+    border: 'border-sky-200/80 hover:border-sky-400',
+    topBar: 'from-sky-400 via-cyan-500 to-blue-600',
+    glow: 'hover:shadow-sky-500/15',
+    badgeBg: 'bg-sky-100 text-sky-700 border-sky-200/70',
+    iconBorder: 'border-sky-100',
+    btnGradient: 'from-sky-500 to-cyan-600'
+  },
+  {
+    id: 'systemdesign',
+    name: 'System Design',
+    subtitle: 'Scalability & Microservices',
+    count: '350+ Q&A',
+    Icon: SystemDesignIcon,
+    domain: 'System Design',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-violet-500/[0.09] via-purple-500/[0.04] to-indigo-500/[0.08]',
+    hoverGradient: 'group-hover:from-violet-500/[0.15] group-hover:to-indigo-500/[0.15]',
+    border: 'border-violet-200/80 hover:border-violet-400',
+    topBar: 'from-violet-500 via-purple-400 to-indigo-600',
+    glow: 'hover:shadow-violet-500/15',
+    badgeBg: 'bg-violet-100 text-violet-700 border-violet-200/70',
+    iconBorder: 'border-violet-100',
+    btnGradient: 'from-violet-500 to-indigo-600'
+  },
+  {
+    id: 'networks',
+    name: 'Computer Networks',
+    subtitle: 'TCP/IP, HTTP & Sockets',
+    count: '250+ Q&A',
+    Icon: NetworksIcon,
+    domain: 'Computer Networks',
+    defaultRole: 'Software Engineer',
+    interviewType: 'Technical',
+    gradient: 'from-teal-500/[0.09] via-emerald-500/[0.04] to-cyan-500/[0.08]',
+    hoverGradient: 'group-hover:from-teal-500/[0.15] group-hover:to-cyan-500/[0.15]',
+    border: 'border-teal-200/80 hover:border-teal-400',
+    topBar: 'from-teal-400 via-emerald-500 to-cyan-600',
+    glow: 'hover:shadow-teal-500/15',
+    badgeBg: 'bg-teal-100 text-teal-700 border-teal-200/70',
+    iconBorder: 'border-teal-100',
+    btnGradient: 'from-teal-500 to-emerald-600'
+  },
+];
+
 const QUICK_PRESETS = [
   { label: '🏢 TCS (NQT/Digital)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'TCS NQT / Digital' },
-  { label: '🔷 Capgemini Technical', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Capgemini Technical' },
-  { label: '🏦 Banking & FinTech', role: 'Full Stack Engineer', level: 'Mid', type: 'Technical', domain: 'Banking & FinTech' },
-  { label: '💻 Frontend (React)', role: 'React Developer', level: 'Mid', type: 'Technical', domain: '' },
-  { label: '🐍 Backend (Python)', role: 'Python Developer', level: 'Mid', type: 'Technical', domain: '' },
-  { label: '⚡ Full Stack', role: 'Full Stack Developer', level: 'Mid', type: 'Technical', domain: '' },
-  { label: '👥 Behavioral (STAR)', role: 'Software Engineer', level: 'Mid', type: 'Behavioral', domain: '' },
-  { label: '📄 Resume Deep-Dive', role: 'Software Engineer', level: 'Mid', type: 'Resume-Based', reqResume: true, domain: '' },
+  { label: '🌈 Wipro (Elite/Turbo)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Wipro Elite & Turbo' },
+  { label: '🔷 Infosys (DSE)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Infosys DSE / Specialist' },
+  { label: '♠️ Capgemini Technical', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Capgemini Technical' },
+  { label: '⚡ Accenture Assessment', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Accenture Cognitive & Technical' },
+  { label: '🌐 Cognizant (GenC)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Cognizant GenC & GenC Next' },
+  { label: '🌳 DSA Mastery', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'DSA' },
+  { label: '🐍 Python Specialist', role: 'Python Developer', level: 'Entry', type: 'Technical', domain: 'Python' },
+  { label: '☕ Java Architecture', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Java' },
+  { label: '👥 Behavioral (STAR)', role: 'Software Engineer', level: 'Mid', type: 'Behavioral', domain: 'HR & Behavioral' },
 ];
 
 const Dashboard = () => {
@@ -145,7 +625,31 @@ const Dashboard = () => {
   const [companyDomain, setCompanyDomain] = useState('');
   const [creatingSession, setCreatingSession] = useState(false);
 
+  // Explorer Modals State
+  const [isAllCompaniesOpen, setIsAllCompaniesOpen] = useState(false);
+  const [isAllDomainsOpen, setIsAllDomainsOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+  const [domainSearch, setDomainSearch] = useState('');
+
   const navigate = useNavigate();
+
+  const handleLaunchCompany = (comp) => {
+    setRole(comp.defaultRole || 'Software Engineer');
+    setExperienceLevel('Entry');
+    setInterviewType('Technical');
+    setCompanyDomain(comp.domain);
+    setIsModalOpen(true);
+    if (isAllCompaniesOpen) setIsAllCompaniesOpen(false);
+  };
+
+  const handleLaunchDomain = (dom) => {
+    setRole(dom.defaultRole || 'Software Engineer');
+    setExperienceLevel('Entry');
+    setInterviewType(dom.interviewType || 'Technical');
+    setCompanyDomain(dom.domain);
+    setIsModalOpen(true);
+    if (isAllDomainsOpen) setIsAllDomainsOpen(false);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -409,7 +913,7 @@ const Dashboard = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {QUICK_TRACKS.map((track) => {
+                {QUICK_TRACKS.slice(0, 4).map((track) => {
                   const Icon = track.icon;
                   const isResumeDisabled = track.requiresResume && !resume;
                   return (
@@ -451,7 +955,159 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* 2. Balanced 2-Column: History Table (8 cols) & Resume ATS (4 cols) */}
+            {/* 2. Practice by Company Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <Building2 size={13} />
+                  </div>
+                  <div>
+                    <h2 className="font-display font-extrabold text-sm text-midnight flex items-center gap-2">
+                      <span>Practice by Company</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100/90 text-purple-700 border border-purple-200/70 hidden sm:inline-block">
+                        Campus & Off-Campus Hiring
+                      </span>
+                    </h2>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link 
+                    to="/question-bank"
+                    className="text-xs text-indigo-700 font-extrabold hover:text-indigo-900 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/70 transition-all group shadow-2xs"
+                  >
+                    <BookOpen size={12} className="text-indigo-600" />
+                    <span>Question Bank</span>
+                    <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                  <button 
+                    onClick={() => setIsAllCompaniesOpen(true)}
+                    className="text-xs text-primary font-extrabold hover:text-primary-dark flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-primary/5 transition-all group"
+                  >
+                    <span>View all companies</span>
+                    <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+                {COMPANIES.map((company) => {
+                  const Logo = company.Logo;
+                  return (
+                    <div
+                      key={company.id}
+                      onClick={() => handleLaunchCompany(company)}
+                      className={`relative overflow-hidden p-3.5 rounded-2xl border ${company.border} bg-gradient-to-br ${company.gradient} ${company.hoverGradient} bg-white shadow-2xs hover:shadow-xl ${company.glow} hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group`}
+                    >
+                      {/* Top luminous brand gradient accent line */}
+                      <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${company.topBar}`} />
+
+                      <div>
+                        {/* Header: Tag + Category */}
+                        <div className="flex items-center justify-between gap-1 mb-2">
+                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border shadow-2xs leading-none ${company.badgeBg}`}>
+                            {company.tag}
+                          </span>
+                          <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">
+                            {company.category === 'Service-Based' ? 'Service' : company.category}
+                          </span>
+                        </div>
+
+                        {/* Elevated Glossy Logo Dock */}
+                        <div className="h-11 w-full bg-white/95 rounded-xl border border-white/80 shadow-xs flex items-center justify-center p-2 mb-2.5 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
+                          <Logo className="max-h-7 max-w-[95px] w-auto" />
+                        </div>
+
+                        <h3 className="font-display font-extrabold text-xs md:text-sm text-midnight group-hover:text-primary transition-colors leading-tight">
+                          {company.name}
+                        </h3>
+                        <p className="text-[10.5px] text-gray-500 mt-0.5 line-clamp-1 leading-snug">
+                          {company.fullName}
+                        </p>
+                      </div>
+
+                      {/* Footer: Q&A Count Pill + Interactive Action Button */}
+                      <div className="mt-3 pt-2 border-t border-black/[0.06] flex items-center justify-between">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${company.badgeBg}`}>
+                          {company.count}
+                        </span>
+                        <div className={`w-6 h-6 rounded-lg bg-white/90 text-gray-500 group-hover:bg-gradient-to-r ${company.btnGradient} group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-2xs group-hover:scale-110 group-hover:shadow-sm`}>
+                          <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Practice by Domain Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Database size={13} />
+                  </div>
+                  <div>
+                    <h2 className="font-display font-extrabold text-sm text-midnight flex items-center gap-2">
+                      <span>Practice by Domain</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100/90 text-cyan-700 border border-cyan-200/70 hidden sm:inline-block">
+                        Core CS & Tech Stacks
+                      </span>
+                    </h2>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsAllDomainsOpen(true)}
+                  className="text-xs text-primary font-extrabold hover:text-primary-dark flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-primary/5 transition-all group"
+                >
+                  <span>View all domains</span>
+                  <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-2.5">
+                {DOMAINS.map((dom) => {
+                  const Icon = dom.Icon;
+                  return (
+                    <div
+                      key={dom.id}
+                      onClick={() => handleLaunchDomain(dom)}
+                      className={`relative overflow-hidden p-3 rounded-2xl border ${dom.border} bg-gradient-to-br ${dom.gradient} ${dom.hoverGradient} bg-white shadow-2xs hover:shadow-xl ${dom.glow} hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group`}
+                    >
+                      {/* Top luminous accent line */}
+                      <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${dom.topBar}`} />
+
+                      <div>
+                        {/* Elevated Icon pedestal with soft rotation on hover */}
+                        <div className={`w-9 h-9 rounded-xl bg-white shadow-xs border ${dom.iconBorder} flex items-center justify-center mb-2.5 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-md transition-all duration-300`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+
+                        <h3 className="font-display font-extrabold text-[12px] text-midnight group-hover:text-primary transition-colors leading-tight line-clamp-1">
+                          {dom.name}
+                        </h3>
+                        <p className="text-[9.5px] text-gray-500 mt-0.5 line-clamp-1 font-medium leading-snug">
+                          {dom.subtitle}
+                        </p>
+                      </div>
+
+                      {/* Footer: Q&A count pill + arrow button */}
+                      <div className="mt-2.5 pt-2 border-t border-black/[0.06] flex items-center justify-between">
+                        <span className={`text-[9.5px] font-extrabold px-1.5 py-0.5 rounded ${dom.badgeBg}`}>
+                          {dom.count}
+                        </span>
+                        <div className={`w-5 h-5 rounded-full bg-white/90 text-gray-400 group-hover:bg-gradient-to-r ${dom.btnGradient} group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-2xs group-hover:scale-110`}>
+                          <ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Balanced 2-Column: History Table (8 cols) & Resume ATS (4 cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Recent Sessions Table (8 cols) */}
@@ -778,11 +1434,27 @@ const Dashboard = () => {
                 className="w-full px-3 py-2 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs bg-white font-medium text-midnight"
               >
                 <option value="">General / Standard Technical</option>
-                <option value="TCS NQT / Digital">🏢 TCS (NQT / Digital Technical Round)</option>
-                <option value="Capgemini Technical">🔷 Capgemini (Technical & Pseudo-code Round)</option>
-                <option value="Banking & FinTech">🏦 Banking & FinTech Systems (ACID, Microservices, Security)</option>
-                <option value="Cloud & DevOps">☁️ Cloud & DevOps (Kubernetes, IaC, CI/CD)</option>
-                <option value="AI & Data Engineering">🤖 AI & Data Engineering (ETL, Vectors, PyTorch)</option>
+                <optgroup label="🏢 Practice by Company">
+                  <option value="TCS NQT / Digital">TCS (NQT & Digital Technical Track)</option>
+                  <option value="Wipro Elite & Turbo">Wipro (Elite & Turbo NLTH Round)</option>
+                  <option value="Infosys DSE / Specialist">Infosys (DSE & Specialist Programmer)</option>
+                  <option value="Capgemini Technical">Capgemini (Technical & Pseudo-code Round)</option>
+                  <option value="Accenture Cognitive & Technical">Accenture (Cognitive & Technical Assessment)</option>
+                  <option value="Cognizant GenC & GenC Next">Cognizant (GenC & GenC Next Technical)</option>
+                </optgroup>
+                <optgroup label="🗄️ Practice by Domain">
+                  <option value="Python">Python Core & Frameworks</option>
+                  <option value="Java">Java & JVM Architecture</option>
+                  <option value="DSA">Data Structures & Algorithms (DSA)</option>
+                  <option value="DBMS">Database Management Systems (DBMS & SQL)</option>
+                  <option value="Operating Systems">Operating Systems & Concurrency</option>
+                  <option value="OOP">Object-Oriented Programming (OOPs Principles)</option>
+                  <option value="Web Development">Web Development & Full Stack</option>
+                  <option value="Machine Learning">Machine Learning & AI Engineering</option>
+                  <option value="HR & Behavioral">HR & Behavioral Leadership (STAR Method)</option>
+                  <option value="Banking & FinTech">Banking & FinTech Systems (ACID, Microservices)</option>
+                  <option value="Cloud & DevOps">Cloud & DevOps (Kubernetes, IaC, CI/CD)</option>
+                </optgroup>
               </select>
             </div>
 
@@ -836,6 +1508,129 @@ const Dashboard = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Explorer Modal: All Companies */}
+      <Modal isOpen={isAllCompaniesOpen} onClose={() => setIsAllCompaniesOpen(false)} title="Explore All Companies">
+        <div className="flex flex-col gap-4">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search company (e.g. TCS, Amazon, Infosys)..."
+              value={companySearch}
+              onChange={(e) => setCompanySearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-cream-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto p-1">
+            {ALL_COMPANIES.filter(c => 
+              c.name.toLowerCase().includes(companySearch.toLowerCase()) || 
+              c.fullName.toLowerCase().includes(companySearch.toLowerCase())
+            ).map((comp) => {
+              const CompLogo = comp.Logo;
+              return (
+                <div 
+                  key={comp.id} 
+                  onClick={() => handleLaunchCompany(comp)}
+                  className={`relative overflow-hidden p-3.5 rounded-2xl border ${comp.border || 'border-cream-border'} bg-gradient-to-br ${comp.gradient || 'from-cream/40 to-white'} bg-white shadow-2xs hover:shadow-lg ${comp.glow || ''} hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group`}
+                >
+                  {comp.topBar && <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${comp.topBar}`} />}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border shadow-2xs ${comp.badgeBg || 'bg-cream text-gray-700'}`}>
+                        {comp.tag || comp.name}
+                      </span>
+                      <span className="text-[9px] font-semibold text-gray-400 uppercase">
+                        {comp.category || 'Tech'}
+                      </span>
+                    </div>
+                    {CompLogo && (
+                      <div className="h-10 w-full bg-white/95 rounded-xl border border-white/80 shadow-xs flex items-center justify-center p-1.5 mb-2 group-hover:scale-105 transition-transform">
+                        <CompLogo className="max-h-6 max-w-[90px] w-auto" />
+                      </div>
+                    )}
+                    <h4 className="font-display font-extrabold text-xs text-midnight group-hover:text-primary transition-colors">
+                      {comp.name}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">{comp.fullName}</p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-black/[0.06] flex items-center justify-between text-[11px] font-medium">
+                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${comp.badgeBg || 'bg-cream text-gray-700'}`}>
+                      {comp.count}
+                    </span>
+                    <span className="text-primary font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px]">
+                      <span>Practice</span>
+                      <ArrowRight size={11} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Explorer Modal: All Domains */}
+      <Modal isOpen={isAllDomainsOpen} onClose={() => setIsAllDomainsOpen(false)} title="Explore All Technical Domains">
+        <div className="flex flex-col gap-4">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search domain (e.g. Python, DSA, Machine Learning)..."
+              value={domainSearch}
+              onChange={(e) => setDomainSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-cream-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto p-1">
+            {ALL_DOMAINS.filter(d => 
+              d.name.toLowerCase().includes(domainSearch.toLowerCase())
+            ).map((dom) => {
+              const DomIcon = dom.Icon;
+              return (
+                <div 
+                  key={dom.id} 
+                  onClick={() => handleLaunchDomain(dom)}
+                  className={`relative overflow-hidden p-3.5 rounded-2xl border ${dom.border || 'border-cream-border'} bg-gradient-to-br ${dom.gradient || 'from-cream/40 to-white'} bg-white shadow-2xs hover:shadow-lg ${dom.glow || ''} hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group`}
+                >
+                  {dom.topBar && <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${dom.topBar}`} />}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border shadow-2xs ${dom.badgeBg || 'bg-cream text-gray-700'}`}>
+                        {dom.subtitle || dom.name}
+                      </span>
+                      <span className="text-[9px] font-semibold text-gray-400">
+                        {dom.interviewType || 'Technical'}
+                      </span>
+                    </div>
+                    {DomIcon && (
+                      <div className={`w-8 h-8 rounded-xl bg-white shadow-xs border ${dom.iconBorder || 'border-cream-border'} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
+                        <DomIcon className="w-4.5 h-4.5" />
+                      </div>
+                    )}
+                    <h4 className="font-display font-extrabold text-xs text-midnight group-hover:text-primary transition-colors">
+                      {dom.name}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Mock interview questions & live AI coding</p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-black/[0.06] flex items-center justify-between text-[11px] font-medium">
+                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${dom.badgeBg || 'bg-cream text-gray-700'}`}>
+                      {dom.count}
+                    </span>
+                    <span className="text-primary font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px]">
+                      <span>Practice</span>
+                      <ArrowRight size={11} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </Modal>
     </div>
   );

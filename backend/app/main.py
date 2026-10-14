@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import connect_db, disconnect_db
-from app.routes import auth, resume, interview
+from app.routes import auth, resume, interview, question_bank
 from app.routes import ai as ai_router
 from app.routes.ai import emotion_router
 from app.routes import interview_ws
@@ -38,6 +38,7 @@ async def shutdown_db_client():
 app.include_router(auth.router)
 app.include_router(resume.router)
 app.include_router(interview.router)
+app.include_router(question_bank.router)
 app.include_router(ai_router.router)
 app.include_router(emotion_router)       # POST /api/emotion/analyze — webcam frame analysis
 app.include_router(interview_ws.router)  # WebSocket dynamic interview

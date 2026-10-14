@@ -7,7 +7,8 @@ import {
   Settings, 
   LogOut, 
   Video, 
-  Play
+  Play,
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
@@ -31,6 +32,7 @@ const Sidebar = () => {
 
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Question Bank', path: '/question-bank', icon: BookOpen, badge: 'New' },
     { name: 'Start Interview', path: '/interview/new', icon: Play },
     { name: 'Resume Management', path: '/resume', icon: FileText },
     { name: 'Interview History', path: '/history', icon: History },
@@ -64,7 +66,12 @@ const Sidebar = () => {
             }
           >
             <link.icon size={18} />
-            <span>{link.name}</span>
+            <span className="flex-1">{link.name}</span>
+            {link.badge && (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-400/20 text-violet-300 border border-violet-400/30">
+                {link.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
