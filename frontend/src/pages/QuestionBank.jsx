@@ -1,88 +1,83 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   Search, 
-  BookOpen, 
   Bookmark, 
-  CheckCircle2, 
-  HelpCircle, 
+  SlidersHorizontal, 
+  Eye, 
+  ChevronRight, 
+  Play, 
   Sparkles, 
-  ChevronDown, 
-  ChevronUp, 
   Copy, 
   Check, 
-  Play, 
-  Filter, 
-  ArrowRight, 
+  X, 
+  BarChart3, 
+  Network, 
   Code2, 
-  Cpu, 
-  Database, 
-  Users, 
+  Atom, 
   Layers, 
-  Zap, 
-  Award, 
+  Brain, 
+  Lightbulb, 
+  LayoutGrid,
+  FileText,
   ExternalLink,
-  RotateCcw,
-  Lightbulb,
-  X,
-  Building2,
-  FileCode2
+  Download
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { 
   TCSLogo, 
-  CapgeminiLogo, 
   WiproLogo, 
+  CognizantLogo, 
+  CapgeminiLogo, 
   InfosysLogo, 
   AccentureLogo, 
-  CognizantLogo, 
-  AmazonLogo,
-  TechMahindraLogo
+  AmazonLogo, 
+  TechMahindraLogo,
+  PythonIcon 
 } from '../components/CompanyDomainIcons';
 import API from '../services/api';
 import { useAlert } from '../context/AlertContext';
-
-import QUESTIONS_DATA from "../data/questionsData";
-
-// Company Card Configurations
-const COMPANY_FILTERS = [
-  { id: 'all', name: 'All Companies', count: 'All', Logo: null },
-  { id: 'tcs', name: 'TCS', count: '18+ Q&A', Logo: TCSLogo, domain: 'TCS NQT / Digital', badge: 'NQT & Digital' },
-  { id: 'capgemini', name: 'Capgemini', count: '16+ Q&A', Logo: CapgeminiLogo, domain: 'Capgemini Technical', badge: 'Tech & Pseudo' },
-  { id: 'infosys', name: 'Infosys', count: '8+ Q&A', Logo: InfosysLogo, domain: 'Infosys DSE / Specialist', badge: 'DSE & SE' },
-  { id: 'wipro', name: 'Wipro', count: '8+ Q&A', Logo: WiproLogo, domain: 'Wipro Elite & Turbo', badge: 'Elite & Turbo' },
-  { id: 'accenture', name: 'Accenture', count: '8+ Q&A', Logo: AccentureLogo, domain: 'Accenture Cognitive & Technical', badge: 'Tech Round' },
-  { id: 'cognizant', name: 'Cognizant', count: '6+ Q&A', Logo: CognizantLogo, domain: 'Cognizant GenC & GenC Next', badge: 'GenC Next' },
-  { id: 'amazon', name: 'Amazon', count: '5+ Q&A', Logo: AmazonLogo, domain: 'Amazon SDE Track', badge: 'FAANG / SDE' },
-  { id: 'tech-mahindra', name: 'Tech Mahindra', count: 'Core CS', Logo: TechMahindraLogo, domain: 'Tech Mahindra Track', badge: 'Tech Track' },
-];
-
-const CATEGORY_TABS = [
-  'All',
-  'Core CS',
-  'OOPs',
-  'DBMS & SQL',
-  'Coding & DSA',
-  'Pseudocode',
-  'HR'
-];
-
-const DIFFICULTY_TABS = ['All', 'Easy', 'Medium', 'Hard'];
+import { 
+  DOMAINS, 
+  COMPANIES, 
+  DATA_ANALYST_68_QUESTIONS, 
+  ALL_DATA_ANALYST_QUESTIONS 
+} from '../data/domainQuestionsData';
 
 const QuestionBank = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useAlert();
 
-  // State
-  const [questions, setQuestions] = useState(QUESTIONS_DATA);
-  const [selectedCompany, setSelectedCompany] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  // View state: 'domains' = First Image | 'drilldown' = Second Image
+  const domainParam = searchParams.get('domain');
+  const [viewMode, setViewMode] = useState(domainParam ? 'drilldown' : 'domains');
+  const [selectedDomainId, setSelectedDomainId] = useState(domainParam || 'data-analyst');
+  const [selectedCompanyId, setSelectedCompanyId] = useState('tcs');
+  const [activeCompanyTab, setActiveCompanyTab] = useState('questions'); // 'questions' | 'pdf'
+
+  // Filter state
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedId, setExpandedId] = useState('tcs-01'); // default expand first item
+  const [sortBy, setSortBy] = useState('Most Relevant');
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [activeModalQuestion, setActiveModalQuestion] = useState(null);
   const [copiedCodeId, setCopiedCodeId] = useState(null);
 
-  // Bookmarks & Mastered (stored in localStorage)
+  // Sync viewMode when URL or location changes
+  useEffect(() => {
+    const currentDomain = searchParams.get('domain');
+    if (currentDomain) {
+      setSelectedDomainId(currentDomain);
+      setViewMode('drilldown');
+    } else {
+      setViewMode('domains');
+    }
+  }, [searchParams, location.pathname]);
+
+  // Bookmarks (localStorage)
   const [bookmarks, setBookmarks] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('interview_ai_bookmarks') || '[]');
@@ -91,883 +86,952 @@ const QuestionBank = () => {
     }
   });
 
-  const [mastered, setMastered] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('interview_ai_mastered') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const [filterBookmarkedOnly, setFilterBookmarkedOnly] = useState(false);
-  const [filterMasteredOnly, setFilterMasteredOnly] = useState(false);
-
-  // AI Explainer Modal
-  const [explainingQuestion, setExplainingQuestion] = useState(null);
-  const [explainingLang, setExplainingLang] = useState('Java');
-  const [explanationText, setExplanationText] = useState('');
+  // AI Explainer State
   const [explanationLoading, setExplanationLoading] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState('');
 
-  // Fetch from backend API on mount if available
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const res = await API.get('/api/question-bank');
-        if (res.data?.questions?.length) {
-          setQuestions(res.data.questions);
-        }
-      } catch (err) {
-        // Fallback to static questions cleanly without user disruption
-        console.log("Using cached question bank data.");
-      }
-    };
-    fetchQuestions();
-  }, []);
+  // Active domain object
+  const currentDomain = useMemo(() => {
+    return DOMAINS.find(d => d.id === selectedDomainId) || DOMAINS[0];
+  }, [selectedDomainId]);
 
-  // Save bookmarks & mastered to localStorage
+  // Active company object
+  const currentCompany = useMemo(() => {
+    return COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
+  }, [selectedCompanyId]);
+
+  // Enter Second Image when clicking on Data Analyst (or any domain)
+  const handleSelectDomain = (domainId) => {
+    setSelectedDomainId(domainId);
+    setSelectedFilterCategory('All');
+    setSelectedDifficulty('All');
+    setSearchQuery('');
+    setShowSavedOnly(false);
+    setViewMode('drilldown');
+    setSearchParams({ domain: domainId });
+  };
+
+  // Return to First Image
+  const handleReturnToDomains = () => {
+    setViewMode('domains');
+    setSelectedFilterCategory('All');
+    setSelectedDifficulty('All');
+    setSearchQuery('');
+    setShowSavedOnly(false);
+    setSearchParams({});
+  };
+
+  // Toggle bookmark
   const toggleBookmark = (id, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setBookmarks(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const isBookmarked = prev.includes(id);
+      const next = isBookmarked ? prev.filter(x => x !== id) : [...prev, id];
       localStorage.setItem('interview_ai_bookmarks', JSON.stringify(next));
-      if (!prev.includes(id)) {
+      if (!isBookmarked) {
         toast.success("Question saved to your bookmarks!", "Bookmarked");
+      } else {
+        toast.info("Question removed from bookmarks.", "Removed");
       }
       return next;
     });
   };
 
-  const toggleMastered = (id, e) => {
-    e.stopPropagation();
-    setMastered(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      localStorage.setItem('interview_ai_mastered', JSON.stringify(next));
-      if (!prev.includes(id)) {
-        toast.success("Great job! Marked question as mastered.", "Progress Updated");
-      }
-      return next;
-    });
-  };
-
+  // Copy code snippet
   const handleCopyCode = (id, code, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     navigator.clipboard.writeText(code);
     setCopiedCodeId(id);
     toast.info("Code copied to clipboard!", "Copied");
     setTimeout(() => setCopiedCodeId(null), 2500);
   };
 
-  const handlePracticeInInterview = (q) => {
-    // Navigate to interview setup or dashboard with company preset
-    const targetDomain = q.company === 'TCS' ? 'TCS NQT / Digital' 
-      : q.company === 'Capgemini' ? 'Capgemini Technical'
-      : q.company === 'Infosys' ? 'Infosys DSE / Specialist'
-      : q.company === 'Wipro' ? 'Wipro Elite & Turbo'
-      : q.company === 'Accenture' ? 'Accenture Cognitive & Technical'
-      : q.company === 'Cognizant' ? 'Cognizant GenC & GenC Next'
-      : 'Technical';
-    
-    navigate('/dashboard', { state: { autoSelectDomain: targetDomain, focusQuestion: q.question } });
+  // Practice in Mock Interview
+  const handleLaunchPractice = (question) => {
+    const domainName = currentDomain.name;
+    const companyName = viewMode === 'drilldown' ? currentCompany.name : '';
+    navigate('/dashboard', { 
+      state: { 
+        autoSelectDomain: companyName ? `${domainName} - ${companyName}` : domainName, 
+        focusQuestion: question?.question || '' 
+      } 
+    });
   };
 
-  // Open AI Explainer
-  const handleOpenAiExplainer = async (q, e) => {
-    e.stopPropagation();
-    setExplainingQuestion(q);
+  // AI Explain request
+  const handleRequestAiExplanation = async (question) => {
     setExplanationLoading(true);
-    setExplanationText('');
-
+    setAiExplanation('');
     try {
       const res = await API.post('/api/question-bank/explain', {
-        question_id: q.id,
-        question_text: q.question,
-        company: q.company,
-        language_preference: explainingLang
+        question_id: question.id,
+        question_text: question.question,
+        company: viewMode === 'drilldown' ? currentCompany.name : currentDomain.name,
+        language_preference: 'Standard'
       });
-      setExplanationText(res.data?.explanation || q.answer);
+      setAiExplanation(res.data?.explanation || question.answer);
     } catch {
-      // Use question's detailed answer + tips as fallback
-      setExplanationText(
-        `### 💡 AI Comprehensive Explanation (${q.company} Focus)\n\n` +
-        `**Core Breakdown:**\n${q.answer}\n\n` +
-        `**🎯 What ${q.company} Interviewers Evaluate:**\n${q.interviewer_tip}\n\n` +
-        `**⚠️ Pitfall to Avoid:**\n${q.common_mistakes}`
+      setAiExplanation(
+        `### 💡 AI Deep Dive (${currentDomain.name})\n\n` +
+        `**Key Architectural Principle:**\n${question.answer}\n\n` +
+        `**🎯 What Interviewers Evaluate:**\n${question.interviewer_tip}\n\n` +
+        `**⚠️ Pitfall to Avoid:**\n${question.common_mistakes}`
       );
     } finally {
       setExplanationLoading(false);
     }
   };
 
-  // Re-run explainer when language changes
-  const handleLanguageChange = async (newLang) => {
-    setExplainingLang(newLang);
-    if (!explainingQuestion) return;
-    setExplanationLoading(true);
-    try {
-      const res = await API.post('/api/question-bank/explain', {
-        question_id: explainingQuestion.id,
-        question_text: explainingQuestion.question,
-        company: explainingQuestion.company,
-        language_preference: newLang
-      });
-      setExplanationText(res.data?.explanation || explainingQuestion.answer);
-    } catch {
-      // Fallback
-    } finally {
-      setExplanationLoading(false);
+  // Source questions based on view mode:
+  // ViewMode 'domains' => DATA_ANALYST_68_QUESTIONS (Image 1: Showing 68 Questions)
+  // ViewMode 'drilldown' => ALL_DATA_ANALYST_QUESTIONS[company] (Image 2: Showing 125 Questions - TCS)
+  const sourceQuestions = useMemo(() => {
+    if (viewMode === 'domains') {
+      return DATA_ANALYST_68_QUESTIONS;
+    }
+    return ALL_DATA_ANALYST_QUESTIONS[selectedCompanyId] || ALL_DATA_ANALYST_QUESTIONS.tcs;
+  }, [viewMode, selectedCompanyId]);
+
+  // Filtered & Sorted Questions
+  const filteredQuestions = useMemo(() => {
+    let result = [...sourceQuestions];
+
+    // Search query
+    if (searchQuery.trim()) {
+      const qTerm = searchQuery.toLowerCase();
+      result = result.filter(q => 
+        q.question.toLowerCase().includes(qTerm) ||
+        q.category.toLowerCase().includes(qTerm) ||
+        (q.summary && q.summary.toLowerCase().includes(qTerm)) ||
+        (q.answer && q.answer.toLowerCase().includes(qTerm))
+      );
+    }
+
+    // Category / Topic filter
+    if (selectedFilterCategory !== 'All') {
+      result = result.filter(q => q.category.toLowerCase() === selectedFilterCategory.toLowerCase());
+    }
+
+    // Difficulty filter
+    if (selectedDifficulty !== 'All') {
+      result = result.filter(q => q.difficulty.toLowerCase() === selectedDifficulty.toLowerCase());
+    }
+
+    // Saved only filter
+    if (showSavedOnly) {
+      result = result.filter(q => bookmarks.includes(q.id));
+    }
+
+    // Sort
+    if (sortBy === 'Difficulty: Easy to Hard') {
+      const diffOrder = { Easy: 1, Medium: 2, Hard: 3 };
+      result.sort((a, b) => (diffOrder[a.difficulty] || 2) - (diffOrder[b.difficulty] || 2));
+    } else if (sortBy === 'Difficulty: Hard to Easy') {
+      const diffOrder = { Easy: 1, Medium: 2, Hard: 3 };
+      result.sort((a, b) => (diffOrder[b.difficulty] || 2) - (diffOrder[a.difficulty] || 2));
+    } else if (sortBy === 'Alphabetical (A-Z)') {
+      result.sort((a, b) => a.question.localeCompare(b.question));
+    }
+
+    return result;
+  }, [sourceQuestions, selectedFilterCategory, selectedDifficulty, searchQuery, showSavedOnly, sortBy, bookmarks]);
+
+  // Render Domain Icon
+  const renderDomainIcon = (iconType) => {
+    switch (iconType) {
+      case 'chart':
+        return <BarChart3 size={20} className="text-purple-600" />;
+      case 'network':
+        return <Network size={20} className="text-blue-600" />;
+      case 'code':
+        return <Code2 size={20} className="text-blue-600" />;
+      case 'react':
+        return <Atom size={20} className="text-cyan-600" />;
+      case 'python':
+        return <PythonIcon className="w-5 h-5" />;
+      case 'stack':
+        return <Layers size={20} className="text-orange-600" />;
+      case 'brain':
+        return <Brain size={20} className="text-purple-600" />;
+      case 'lightbulb':
+        return <Lightbulb size={20} className="text-amber-500" />;
+      default:
+        return <BarChart3 size={20} className="text-purple-600" />;
     }
   };
 
-  // Filtered Questions
-  const filteredQuestions = useMemo(() => {
-    return questions.filter(q => {
-      // Company match
-      if (selectedCompany !== 'all') {
-        const cLow = selectedCompany.toLowerCase();
-        const matchCompany = q.company.toLowerCase().includes(cLow) || 
-                             q.company_tag.toLowerCase().includes(cLow);
-        if (!matchCompany) return false;
-      }
+  // Render Company Logo
+  const renderCompanyLogo = (logoType) => {
+    switch (logoType) {
+      case 'tcs':
+        return <TCSLogo className="h-6 w-auto" />;
+      case 'wipro':
+        return <WiproLogo className="h-6 w-auto" />;
+      case 'cognizant':
+        return <CognizantLogo className="h-6 w-auto" />;
+      case 'capgemini':
+        return <CapgeminiLogo className="h-6 w-auto" />;
+      case 'infosys':
+        return <InfosysLogo className="h-6 w-auto" />;
+      case 'accenture':
+        return <AccentureLogo className="h-6 w-auto" />;
+      case 'amazon':
+        return <AmazonLogo className="h-6 w-auto" />;
+      case 'tech-mahindra':
+        return <TechMahindraLogo className="h-6 w-auto" />;
+      default:
+        return null;
+    }
+  };
 
-      // Category match
-      if (selectedCategory !== 'All') {
-        if (!q.category.toLowerCase().includes(selectedCategory.toLowerCase())) {
-          return false;
-        }
-      }
+  // Category pill styling
+  const getCategoryBadgeClass = (cat) => {
+    switch (cat) {
+      case 'SQL & DBMS':
+        return 'bg-[#EDE9FE] text-[#6D28D9]';
+      case 'Python & Pandas':
+        return 'bg-[#E0F2FE] text-[#0369A1]';
+      case 'Excel':
+        return 'bg-[#FCE7F3] text-[#BE185D]';
+      case 'Power BI':
+        return 'bg-[#E0F2FE] text-[#0284C7]';
+      case 'Statistics':
+        return 'bg-[#EDE9FE] text-[#6D28D9]';
+      case 'Data Analysis':
+        return 'bg-[#CCFBF1] text-[#0F766E]';
+      case 'Case Studies':
+        return 'bg-[#FEF3C7] text-[#B45309]';
+      case 'Business Analytics':
+        return 'bg-[#EDE9FE] text-[#6D28D9]';
+      case 'HR':
+        return 'bg-[#F1F5F9] text-[#475569]';
+      default:
+        return 'bg-[#EDE9FE] text-[#6D28D9]';
+    }
+  };
 
-      // Difficulty match
-      if (selectedDifficulty !== 'All') {
-        if (q.difficulty.toLowerCase() !== selectedDifficulty.toLowerCase()) {
-          return false;
-        }
-      }
+  // Difficulty pill styling
+  const getDifficultyBadgeClass = (diff) => {
+    switch (diff) {
+      case 'Easy':
+        return 'bg-[#DCFCE7] text-[#166534]';
+      case 'Medium':
+        return 'bg-[#FEF3C7] text-[#92400E]';
+      case 'Hard':
+        return 'bg-[#FEE2E2] text-[#991B1B]';
+      default:
+        return 'bg-[#F1F5F9] text-[#475569]';
+    }
+  };
 
-      // Bookmarked filter
-      if (filterBookmarkedOnly && !bookmarks.includes(q.id)) {
-        return false;
-      }
-
-      // Mastered filter
-      if (filterMasteredOnly && !mastered.includes(q.id)) {
-        return false;
-      }
-
-      // Search match
-      if (searchQuery.trim()) {
-        const qTerm = searchQuery.toLowerCase();
-        const match = q.question.toLowerCase().includes(qTerm) ||
-                      q.summary.toLowerCase().includes(qTerm) ||
-                      q.company.toLowerCase().includes(qTerm) ||
-                      q.category.toLowerCase().includes(qTerm) ||
-                      q.round.toLowerCase().includes(qTerm);
-        if (!match) return false;
-      }
-
-      return true;
-    });
-  }, [questions, selectedCompany, selectedCategory, selectedDifficulty, searchQuery, bookmarks, mastered, filterBookmarkedOnly, filterMasteredOnly]);
-
-  // Statistics
-  const totalCount = questions.length;
-  const tcsCount = questions.filter(q => q.company === 'TCS').length;
-  const capgCount = questions.filter(q => q.company === 'Capgemini').length;
-  const masteredCount = mastered.length;
-  const bookmarkedCount = bookmarks.length;
-  const progressPercent = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0;
+  // Categories list for View 1 vs View 2
+  const activeCategoriesList = useMemo(() => {
+    if (viewMode === 'domains') {
+      // First Image categories: All, SQL & DBMS, Python & Pandas, Excel, Power BI, Statistics, Data Analysis, Case Studies, HR
+      return ['All', 'SQL & DBMS', 'Python & Pandas', 'Excel', 'Power BI', 'Statistics', 'Data Analysis', 'Case Studies', 'HR'];
+    }
+    // Second Image topics: includes Business Analytics
+    return ['All', 'SQL & DBMS', 'Python & Pandas', 'Excel', 'Power BI', 'Statistics', 'Data Analysis', 'Case Studies', 'Business Analytics', 'HR'];
+  }, [viewMode]);
 
   return (
-    <div className="min-h-screen flex bg-cream font-sans">
+    <div className="min-h-screen flex bg-[#F8FAFC] font-sans text-slate-900">
+      {/* Sidebar Navigation */}
       <Sidebar />
 
       {/* Main Container */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-7xl">
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* Header Breadcrumb & Title */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* ========================================================= */}
+        {/* VIEW 1: DOMAIN SELECTION VIEW (SCREENSHOT 1)             */}
+        {/* ========================================================= */}
+        {viewMode === 'domains' ? (
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
-              <BookOpen size={14} />
-              <span>Interview Preparation Hub</span>
-              <span className="text-gray-300">•</span>
-              <span className="text-gray-500">Recruiter Question Bank</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-midnight tracking-tight">
-              Company Question Bank
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Curated, frequently asked interview questions from <strong className="text-midnight">TCS</strong>, <strong className="text-midnight">Capgemini</strong>, <strong className="text-midnight">Infosys</strong>, <strong className="text-midnight">Wipro</strong>, and top tech firms.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-midnight text-white text-xs font-semibold hover:bg-midnight-light transition-all shadow-sm"
-            >
-              <Play size={14} className="text-primary-light" />
-              <span>Launch Mock Interview</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Top Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-2xl bg-white border border-cream-border shadow-xs flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-violet-50 text-primary flex items-center justify-center shrink-0">
-              <Database size={20} />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400 font-medium">Total Questions</div>
-              <div className="text-xl font-display font-bold text-midnight">{totalCount} Questions</div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-cream-border shadow-xs flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400 font-medium">TCS Questions</div>
-              <div className="text-xl font-display font-bold text-rose-700">{tcsCount} Sets</div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-cream-border shadow-xs flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
-              <Cpu size={20} />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400 font-medium">Capgemini Sets</div>
-              <div className="text-xl font-display font-bold text-cyan-700">{capgCount} Sets</div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-cream-border shadow-xs flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Award size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-400 font-medium flex items-center justify-between">
-                <span>Mastered</span>
-                <span className="font-bold text-emerald-600">{progressPercent}%</span>
+            {/* Top Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                  Question Bank
+                </h1>
+                <p className="text-sm text-slate-500 mt-1">
+                  Choose a domain to explore topic-wise interview questions.
+                </p>
               </div>
-              <div className="text-xl font-display font-bold text-emerald-700">{masteredCount} / {totalCount}</div>
-              <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden mt-1">
-                <div 
-                  className="bg-emerald-500 h-full transition-all duration-500" 
-                  style={{ width: `${Math.min(100, progressPercent)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Company Carousel / Selector Tabs */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <Building2 size={14} />
-              <span>Select Recruiter Track</span>
-            </h2>
-            <span className="text-xs text-gray-400 font-medium">Click to filter company-specific question sets</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {COMPANY_FILTERS.map((item) => {
-              const isActive = selectedCompany === item.id;
-              const isTCS = item.id === 'tcs';
-              const isCapg = item.id === 'capgemini';
-
-              return (
+              <div>
                 <button
-                  key={item.id}
-                  onClick={() => {
-                    setSelectedCompany(item.id);
-                    // Reset page scroll position if needed
-                  }}
-                  className={`flex flex-col items-start p-3.5 rounded-2xl border transition-all text-left relative overflow-hidden group ${
-                    isActive 
-                      ? 'bg-white border-primary shadow-md ring-2 ring-primary/20' 
-                      : 'bg-white/80 hover:bg-white border-cream-border hover:border-gray-300 shadow-xs'
-                  }`}
+                  onClick={() => handleLaunchPractice(null)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
-                  {/* Top highlight bar */}
-                  {isActive && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-accent-pink" />
-                  )}
+                  <Play size={15} className="fill-white" />
+                  <span>Launch Mock Interview</span>
+                </button>
+              </div>
+            </div>
 
-                  <div className="w-full flex items-center justify-between gap-2 mb-2">
-                    <div className="h-7 flex items-center">
-                      {item.Logo ? (
-                        <item.Logo className="h-6 w-auto object-contain" />
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
-                          <Layers size={16} className="text-primary" />
-                          <span>All Sets</span>
+            {/* SELECT DOMAIN SECTION */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider mb-3.5">
+                <LayoutGrid size={16} className="text-slate-600" />
+                <span>SELECT DOMAIN</span>
+              </div>
+
+              {/* 4x2 Domain Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {DOMAINS.map((domain) => {
+                  const isDataAnalyst = domain.id === 'data-analyst';
+
+                  return (
+                    <button
+                      key={domain.id}
+                      onClick={() => handleSelectDomain(domain.id)}
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all duration-200 relative group cursor-pointer ${
+                        isDataAnalyst 
+                          ? 'bg-purple-50/50 border-[#8B5CF6] ring-1 ring-[#8B5CF6]/50 shadow-xs' 
+                          : 'bg-white hover:bg-slate-50/80 border-slate-200/90 hover:border-slate-300 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className="w-11 h-11 rounded-xl bg-purple-100/80 flex items-center justify-center shrink-0">
+                          {renderDomainIcon(domain.iconType)}
                         </div>
-                      )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 truncate">
+                            {domain.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate mt-0.5 leading-snug">
+                            {domain.subtitle}
+                          </div>
+                        </div>
+                      </div>
+
+                      <ChevronRight 
+                        size={18} 
+                        className={`shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
+                          isDataAnalyst ? 'text-[#8B5CF6]' : 'text-slate-400'
+                        }`} 
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ========================================================= */
+          /* VIEW 2: DRILL-DOWN COMPANY TRACK VIEW (SCREENSHOT 2)     */
+          /* ========================================================= */
+          <div>
+            {/* Top Breadcrumb */}
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-3">
+              <button
+                onClick={handleReturnToDomains}
+                className="hover:text-primary transition-colors cursor-pointer"
+              >
+                Question Bank
+              </button>
+              <ChevronRight size={14} className="text-slate-400" />
+              <span className="text-slate-900 font-bold">{currentDomain.name}</span>
+            </div>
+
+            {/* Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0 shadow-xs">
+                  <BarChart3 size={26} />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                    {currentDomain.name}
+                  </h1>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    Select a company to explore interview questions for {currentDomain.name} role.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <button
+                  onClick={() => handleLaunchPractice(null)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                >
+                  <Play size={15} className="fill-white" />
+                  <span>Launch Mock Interview</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 8 Company Cards Grid (4x2) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-8">
+              {COMPANIES.map((comp) => {
+                const isSelected = selectedCompanyId === comp.id;
+
+                return (
+                  <button
+                    key={comp.id}
+                    onClick={() => {
+                      setSelectedCompanyId(comp.id);
+                      setSelectedFilterCategory('All');
+                    }}
+                    className={`flex items-center justify-between p-4 rounded-2xl border text-left transition-all duration-200 relative group cursor-pointer ${
+                      isSelected 
+                        ? 'bg-purple-50/50 border-[#8B5CF6] ring-1 ring-[#8B5CF6]/50 shadow-xs' 
+                        : 'bg-white hover:bg-slate-50/80 border-slate-200/90 hover:border-slate-300 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-1.5 min-w-0 pr-2">
+                      <div className="h-7 flex items-center">
+                        {renderCompanyLogo(comp.logoType)}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">{comp.name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{comp.sets}</div>
+                      </div>
                     </div>
 
-                    {item.badge && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        isTCS 
-                          ? 'bg-rose-50 text-rose-700 border-rose-200' 
-                          : isCapg 
-                          ? 'bg-cyan-50 text-cyan-700 border-cyan-200' 
-                          : 'bg-gray-100 text-gray-600 border-gray-200'
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
+                    <ChevronRight 
+                      size={18} 
+                      className={`shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 ${
+                        isSelected ? 'text-[#8B5CF6]' : 'text-slate-400'
+                      }`} 
+                    />
+                  </button>
+                );
+              })}
+            </div>
 
-                  <div className="text-sm font-bold text-midnight font-display flex items-center justify-between w-full">
-                    <span>{item.name}</span>
-                    <span className="text-xs font-normal text-gray-400">{item.count}</span>
-                  </div>
+            {/* View Mode Toggle: Interactive Questions vs Official AmbitionBox PDF */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveCompanyTab('questions')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeCompanyTab === 'questions'
+                      ? 'bg-[#6366F1] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Interview Questions & Answers ({filteredQuestions.length})</span>
                 </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Company Spotlight Banner (Dynamic context for TCS & Capgemini) */}
-        {selectedCompany === 'tcs' && (
-          <div className="mb-8 p-5 md:p-6 rounded-2xl bg-gradient-to-r from-rose-900 via-indigo-950 to-midnight text-white shadow-lg border border-rose-900/40 relative overflow-hidden">
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-              <div className="space-y-2 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30">
-                  <TCSLogo className="h-4 w-auto brightness-200" />
-                  <span>TCS NQT, Digital & Ninja Drive Masterclass</span>
-                </div>
-                <h3 className="text-xl md:text-2xl font-display font-bold text-white">
-                  TCS Hiring Pattern & Evaluation Insights
-                </h3>
-                <p className="text-sm text-gray-300 leading-relaxed">
-                  TCS focuses extensively on <strong>Core CS fundamentals</strong>: Stack vs Heap Memory, Call by Value/Reference, ACID in DBMS, SQL <code className="text-rose-300 bg-rose-950/60 px-1 py-0.5 rounded">DENSE_RANK()</code> salary queries, and willingness for rotational shifts & relocation.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-300 pt-1">
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 1: NQT Foundation (60m)</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 2: Advanced Coding (40m)</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 3: Tech & HR Interview (30m)</span>
-                </div>
+                {currentCompany.pdfUrl && (
+                  <button
+                    onClick={() => setActiveCompanyTab('pdf')}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCompanyTab === 'pdf'
+                        ? 'bg-[#6366F1] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText size={14} />
+                    <span>AmbitionBox PDF</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      activeCompanyTab === 'pdf' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      2026
+                    </span>
+                  </button>
+                )}
               </div>
 
-              <button
-                onClick={() => handlePracticeInInterview({ company: 'TCS' })}
-                className="shrink-0 px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 shadow-glow transition-all"
-              >
-                <Play size={16} />
-                <span>Practice TCS Mock Interview</span>
-              </button>
+              {currentCompany.pdfUrl && (
+                <div className="flex items-center gap-2 text-xs text-slate-500 pr-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Questions extracted directly from official <strong>{currentCompany.name} AmbitionBox PDF</strong></span>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {selectedCompany === 'capgemini' && (
-          <div className="mb-8 p-5 md:p-6 rounded-2xl bg-gradient-to-r from-cyan-950 via-blue-950 to-midnight text-white shadow-lg border border-cyan-800/40 relative overflow-hidden">
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-              <div className="space-y-2 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30">
-                  <CapgeminiLogo className="h-4 w-auto brightness-200" />
-                  <span>Capgemini Technical & Pseudo-code Elimination Guide</span>
+        {/* If in Drilldown View and PDF tab is active, show the PDF Document Viewer */}
+        {viewMode === 'drilldown' && activeCompanyTab === 'pdf' ? (
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0 shadow-xs">
+                  <FileText size={22} />
                 </div>
-                <h3 className="text-xl md:text-2xl font-display font-bold text-white">
-                  Capgemini Technical Track & Pseudocode Pattern
-                </h3>
-                <p className="text-sm text-gray-300 leading-relaxed">
-                  Capgemini's defining round is the <strong>30-Question Pseudo-code Round</strong> (bitwise XOR, AND, left/right shifts, loops), followed by deep technical questions on the <strong>4 Pillars of OOPs</strong>, <strong>Exception Handling</strong> (<code className="text-cyan-300 bg-cyan-950/60 px-1 py-0.5 rounded">finally</code> vs <code className="text-cyan-300 bg-cyan-950/60 px-1 py-0.5 rounded">finalize</code>), and Capgemini's Seven Values.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-300 pt-1">
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 1: Pseudo-code (30 Qs)</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 2: Spoken English Communication</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">Round 3: Technical & HR (45m)</span>
+                <div>
+                  <h2 className="text-base md:text-lg font-bold text-slate-900">
+                    {currentCompany.pdfTitle || `${currentCompany.name} Data Analyst Interview Questions & Answers 2026`}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Official AmbitionBox 2026 PDF Document • Verified questions asked by real candidates
+                  </p>
                 </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a 
+                  href={currentCompany.pdfUrl} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:text-primary hover:border-primary transition-all cursor-pointer"
+                >
+                  <ExternalLink size={14} />
+                  <span>Open Fullscreen</span>
+                </a>
+                <a 
+                  href={currentCompany.pdfUrl} 
+                  download
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-all cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>Download PDF</span>
+                </a>
+              </div>
+            </div>
 
-              <button
-                onClick={() => handlePracticeInInterview({ company: 'Capgemini' })}
-                className="shrink-0 px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 shadow-glow transition-all"
-              >
-                <Play size={16} />
-                <span>Practice Capgemini Mock Interview</span>
-              </button>
+            <div className="w-full h-[780px] rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+              <iframe 
+                src={currentCompany.pdfUrl} 
+                className="w-full h-full border-0" 
+                title={`${currentCompany.name} Interview Questions PDF`} 
+              />
             </div>
           </div>
-        )}
-
-        {/* Filter & Search Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-cream-border shadow-xs mb-6 space-y-4">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            
+        ) : (
+          <>
+            {/* ========================================================= */}
+            {/* SEARCH & FILTER CONTROLS                                 */}
+            {/* ========================================================= */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 mb-6">
+          {/* Top Search & Actions Row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by topic (e.g. stack, bitwise, ACID, OOPs, salary, exception)..."
-                className="w-full pl-10 pr-4 py-2.5 bg-cream-darker/60 border border-cream-border rounded-xl text-sm focus:outline-none focus:border-primary text-midnight placeholder-gray-400"
+                placeholder={
+                  viewMode === 'domains'
+                    ? "Search questions by topic (e.g. SQL, Pandas, Excel, Statistics...)"
+                    : "Search questions (e.g. SQL, Pandas, Excel, Power BI, statistics...)"
+                }
+                className="w-full pl-10 pr-9 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-semibold"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  Clear
+                  <X size={15} />
                 </button>
               )}
             </div>
 
-            {/* Quick Filter Toggles */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Saved and Filter Buttons */}
+            <div className="flex items-center gap-2.5 shrink-0">
               <button
-                onClick={() => setFilterBookmarkedOnly(!filterBookmarkedOnly)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                  filterBookmarkedOnly
-                    ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                    : 'bg-white text-gray-600 border-cream-border hover:bg-cream-darker'
+                onClick={() => setShowSavedOnly(!showSavedOnly)}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  showSavedOnly 
+                    ? 'bg-primary text-white border-primary shadow-xs' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                 }`}
               >
-                <Bookmark size={14} className={filterBookmarkedOnly ? 'fill-white' : ''} />
-                <span>Saved ({bookmarkedCount})</span>
+                <Bookmark size={14} className={showSavedOnly ? 'fill-white' : ''} />
+                <span>Saved ({bookmarks.length})</span>
               </button>
 
               <button
-                onClick={() => setFilterMasteredOnly(!filterMasteredOnly)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                  filterMasteredOnly
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                    : 'bg-white text-gray-600 border-cream-border hover:bg-cream-darker'
-                }`}
+                onClick={() => {
+                  setSelectedFilterCategory('All');
+                  setSelectedDifficulty('All');
+                  setSearchQuery('');
+                  setShowSavedOnly(false);
+                  toast.info("All search & topic filters reset.", "Filters Reset");
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer"
               >
-                <CheckCircle2 size={14} className={filterMasteredOnly ? 'fill-white' : ''} />
-                <span>Mastered ({masteredCount})</span>
+                <SlidersHorizontal size={14} />
+                <span>Filter</span>
               </button>
-
-              {(selectedCompany !== 'all' || selectedCategory !== 'All' || selectedDifficulty !== 'All' || searchQuery || filterBookmarkedOnly || filterMasteredOnly) && (
-                <button
-                  onClick={() => {
-                    setSelectedCompany('all');
-                    setSelectedCategory('All');
-                    setSelectedDifficulty('All');
-                    setSearchQuery('');
-                    setFilterBookmarkedOnly(false);
-                    setFilterMasteredOnly(false);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs text-rose-500 hover:bg-rose-50 transition-colors font-semibold"
-                  title="Reset all filters"
-                >
-                  <RotateCcw size={13} />
-                  <span>Reset</span>
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Sub-Filters: Categories & Difficulty */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-cream-border/60 text-xs">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              <span className="text-gray-400 font-semibold mr-1 shrink-0">Category:</span>
-              {CATEGORY_TABS.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-midnight text-white shadow-xs'
-                      : 'bg-cream-darker text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+          {/* Filter Pills Row (Category/Topic & Difficulty) */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-3 border-t border-slate-100">
+            {/* Category / Topic Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <span className="text-xs font-bold text-slate-700 mr-1.5">
+                {viewMode === 'domains' ? 'Category:' : 'Topic:'}
+              </span>
+              {activeCategoriesList.map((cat) => {
+                const isCatActive = selectedFilterCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedFilterCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-xs transition-all cursor-pointer ${
+                      isCatActive
+                        ? 'bg-[#6366F1] text-white font-semibold shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 font-medium'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
 
+            {/* Difficulty Pills */}
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-gray-400 font-semibold mr-1">Difficulty:</span>
-              {DIFFICULTY_TABS.map((diff) => (
-                <button
-                  key={diff}
-                  onClick={() => setSelectedDifficulty(diff)}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                    selectedDifficulty === diff
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'bg-cream-darker text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {diff}
-                </button>
-              ))}
+              <span className="text-xs font-bold text-slate-700 mr-1.5">Difficulty:</span>
+              {['All', 'Easy', 'Medium', 'Hard'].map((diff) => {
+                const isDiffActive = selectedDifficulty === diff;
+                
+                let btnStyle = '';
+                if (diff === 'All') {
+                  btnStyle = isDiffActive 
+                    ? 'bg-[#6366F1] text-white font-semibold shadow-xs' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 font-medium';
+                } else if (diff === 'Easy') {
+                  btnStyle = isDiffActive
+                    ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                    : 'bg-[#ECFDF5] text-[#059669] hover:bg-[#D1FAE5] font-semibold';
+                } else if (diff === 'Medium') {
+                  btnStyle = isDiffActive
+                    ? 'bg-amber-600 text-white font-semibold shadow-xs'
+                    : 'bg-[#FFFBEB] text-[#D97706] hover:bg-[#FEF3C7] font-semibold';
+                } else if (diff === 'Hard') {
+                  btnStyle = isDiffActive
+                    ? 'bg-rose-600 text-white font-semibold shadow-xs'
+                    : 'bg-[#FEF2F2] text-[#E11D48] hover:bg-[#FEE2E2] font-semibold';
+                }
+
+                return (
+                  <button
+                    key={diff}
+                    onClick={() => setSelectedDifficulty(diff)}
+                    className={`px-3 py-1 rounded-full text-xs transition-all cursor-pointer ${btnStyle}`}
+                  >
+                    {diff}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Questions List Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm font-bold text-gray-700 flex items-center gap-2">
-            <span>Showing {filteredQuestions.length} Questions</span>
-            {selectedCompany !== 'all' && (
-              <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">
-                {selectedCompany.toUpperCase()} Track
-              </span>
+        {/* ========================================================= */}
+        {/* QUESTIONS LIST SECTION HEADER                            */}
+        {/* ========================================================= */}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="text-sm md:text-base font-bold text-slate-900">
+            {viewMode === 'domains' ? (
+              <span>Showing {filteredQuestions.length} Questions</span>
+            ) : (
+              <span>Showing {filteredQuestions.length} Questions ({currentCompany.name} – {currentDomain.name})</span>
             )}
           </div>
-          <span className="text-xs text-gray-400">Click any question to view detailed answer & code</span>
+
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="font-medium text-slate-500">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-transparent font-semibold text-slate-800 border-none focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="Most Relevant">Most Relevant</option>
+              <option value="Difficulty: Easy to Hard">Difficulty: Easy to Hard</option>
+              <option value="Difficulty: Hard to Easy">Difficulty: Hard to Easy</option>
+              <option value="Alphabetical (A-Z)">Alphabetical (A-Z)</option>
+            </select>
+          </div>
         </div>
 
-        {/* Questions Accordion Cards */}
-        {filteredQuestions.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-2xl border border-cream-border space-y-3">
-            <HelpCircle size={40} className="mx-auto text-gray-300" />
-            <h3 className="text-base font-bold text-gray-700">No questions found matching your criteria</h3>
-            <p className="text-xs text-gray-400 max-w-md mx-auto">
-              Try adjusting your search keyword, category, or clear company filters to see all available question sets.
-            </p>
-            <button
-              onClick={() => {
-                setSelectedCompany('all');
-                setSelectedCategory('All');
-                setSelectedDifficulty('All');
-                setSearchQuery('');
-                setFilterBookmarkedOnly(false);
-                setFilterMasteredOnly(false);
-              }}
-              className="px-4 py-2 rounded-xl bg-midnight text-white text-xs font-semibold hover:bg-midnight-light transition-all"
-            >
-              Reset Filters
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredQuestions.map((q) => {
-              const isExpanded = expandedId === q.id;
+        {/* ========================================================= */}
+        {/* QUESTIONS LIST ROWS                                      */}
+        {/* ========================================================= */}
+        <div className="space-y-3">
+          {filteredQuestions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+                <Search size={22} />
+              </div>
+              <h3 className="text-base font-bold text-slate-800 mb-1">No matching questions found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                We couldn't find any questions matching your current filters or search keywords.
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedFilterCategory('All');
+                  setSelectedDifficulty('All');
+                  setSearchQuery('');
+                  setShowSavedOnly(false);
+                }}
+                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-all cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            filteredQuestions.map((q, idx) => {
               const isBookmarked = bookmarks.includes(q.id);
-              const isMastered = mastered.includes(q.id);
-              const isTCS = q.company === 'TCS';
-              const isCapg = q.company === 'Capgemini';
 
               return (
                 <div
                   key={q.id}
-                  className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ${
-                    isExpanded 
-                      ? 'border-primary ring-1 ring-primary/20 shadow-md' 
-                      : 'border-cream-border hover:border-gray-300'
-                  }`}
+                  onClick={() => {
+                    setActiveModalQuestion(q);
+                    setAiExplanation('');
+                  }}
+                  className="bg-white rounded-xl border border-slate-200/80 p-3.5 md:p-4 hover:border-[#8B5CF6]/50 hover:shadow-xs transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-3 group cursor-pointer"
                 >
-                  {/* Card Header */}
-                  <div
-                    onClick={() => setExpandedId(isExpanded ? null : q.id)}
-                    className="p-5 cursor-pointer flex items-start justify-between gap-4 select-none"
-                  >
-                    <div className="space-y-2 flex-1">
-                      {/* Meta Tags Row */}
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        {/* Company Badge */}
-                        <span className={`font-bold px-2.5 py-0.5 rounded-full border ${
-                          isTCS 
-                            ? 'bg-rose-50 text-rose-700 border-rose-200' 
-                            : isCapg 
-                            ? 'bg-cyan-50 text-cyan-700 border-cyan-200' 
-                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                        }`}>
-                          {q.company}
-                        </span>
-
-                        {/* Round Badge */}
-                        <span className="font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 border border-gray-200">
-                          {q.round}
-                        </span>
-
-                        {/* Category */}
-                        <span className="font-medium px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-100">
-                          {q.category}
-                        </span>
-
-                        {/* Difficulty */}
-                        <span className={`font-bold px-2 py-0.5 rounded-md ${
-                          q.difficulty === 'Easy' 
-                            ? 'text-emerald-700 bg-emerald-50' 
-                            : q.difficulty === 'Medium' 
-                            ? 'text-amber-700 bg-amber-50' 
-                            : 'text-rose-700 bg-rose-50'
-                        }`}>
-                          {q.difficulty}
-                        </span>
-
-                        {/* Frequency Tag */}
-                        {q.frequency && (
-                          <span className="text-[11px] text-gray-500 font-medium">
-                            {q.frequency}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Question Text */}
-                      <h3 className="text-base md:text-lg font-bold text-midnight font-display tracking-tight hover:text-primary transition-colors">
-                        {q.question}
-                      </h3>
-
-                      {/* Brief Summary (Visible when collapsed) */}
-                      {!isExpanded && (
-                        <p className="text-xs text-gray-500 line-clamp-1">
-                          {q.summary}
-                        </p>
-                      )}
+                  {/* Left: Number + Question Text */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 font-semibold text-xs flex items-center justify-center shrink-0">
+                      {idx + 1}
                     </div>
-
-                    {/* Quick Action Icons & Expand Chevron */}
-                    <div className="flex items-center gap-1.5 shrink-0 pt-1">
-                      <button
-                        onClick={(e) => toggleBookmark(q.id, e)}
-                        className={`p-2 rounded-xl transition-colors ${
-                          isBookmarked 
-                            ? 'text-amber-500 hover:bg-amber-50' 
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title={isBookmarked ? "Remove Bookmark" : "Save Question"}
-                      >
-                        <Bookmark size={16} className={isBookmarked ? 'fill-amber-500' : ''} />
-                      </button>
-
-                      <button
-                        onClick={(e) => toggleMastered(q.id, e)}
-                        className={`p-2 rounded-xl transition-colors ${
-                          isMastered 
-                            ? 'text-emerald-600 hover:bg-emerald-50' 
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title={isMastered ? "Marked as Mastered" : "Mark as Mastered"}
-                      >
-                        <CheckCircle2 size={16} className={isMastered ? 'fill-emerald-600 text-white' : ''} />
-                      </button>
-
-                      <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
+                    <div className="text-sm md:text-[15px] font-semibold text-slate-900 group-hover:text-primary transition-colors leading-snug">
+                      {q.question}
                     </div>
                   </div>
 
-                  {/* Expanded Content Section */}
-                  {isExpanded && (
-                    <div className="px-5 pb-6 pt-2 border-t border-cream-border/60 bg-cream/30 space-y-5">
-                      
-                      {/* Comprehensive Answer */}
-                      <div className="space-y-2">
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <BookOpen size={14} className="text-primary" />
-                          <span>Detailed Model Answer & Technical Breakdown</span>
-                        </div>
-                        <div className="prose prose-sm max-w-none text-gray-700 bg-white p-4 rounded-xl border border-cream-border whitespace-pre-line text-sm leading-relaxed">
-                          {q.answer}
-                        </div>
-                      </div>
+                  {/* Right: Badges & View Answer Action */}
+                  <div className="flex items-center gap-3 shrink-0 pl-11 md:pl-0">
+                    {/* Category Pill */}
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getCategoryBadgeClass(q.category)}`}>
+                      {q.category}
+                    </span>
 
-                      {/* Code Example (if available) */}
-                      {q.code_example && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                              <Code2 size={14} className="text-indigo-600" />
-                              <span>Code Implementation ({q.code_example.language.toUpperCase()})</span>
-                            </span>
-                            <button
-                              onClick={(e) => handleCopyCode(q.id, q.code_example.code, e)}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
-                            >
-                              {copiedCodeId === q.id ? (
-                                <>
-                                  <Check size={12} className="text-emerald-600" />
-                                  <span className="text-emerald-600">Copied!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={12} />
-                                  <span>Copy Code</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                          <div className="rounded-xl overflow-hidden border border-midnight-border bg-midnight text-gray-200 p-4 font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
-                            <pre>{q.code_example.code}</pre>
-                          </div>
-                        </div>
-                      )}
+                    {/* Difficulty Pill */}
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getDifficultyBadgeClass(q.difficulty)}`}>
+                      {q.difficulty}
+                    </span>
 
-                      {/* Interviewer Tip & Pitfall Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                        {q.interviewer_tip && (
-                          <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 space-y-1">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
-                              <Lightbulb size={14} />
-                              <span>{q.company} Interviewer Secret Tip</span>
-                            </div>
-                            <p className="text-xs text-amber-800/90 leading-relaxed">
-                              {q.interviewer_tip}
-                            </p>
-                          </div>
-                        )}
+                    {/* Image 1 vs Image 2 Action Button Layout */}
+                    {viewMode === 'domains' ? (
+                      /* Image 1: 'View answer >' button with chevron right */
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveModalQuestion(q);
+                          setAiExplanation('');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-primary hover:bg-purple-50 transition-all cursor-pointer group/btn"
+                      >
+                        <Eye size={15} className="text-slate-500 group-hover/btn:text-primary" />
+                        <span>View answer</span>
+                        <ChevronRight size={15} className="text-slate-400 group-hover/btn:text-primary" />
+                      </button>
+                    ) : (
+                      /* Image 2: 'View Answer' button + separate Bookmark icon button */
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveModalQuestion(q);
+                            setAiExplanation('');
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:text-primary hover:border-primary transition-all cursor-pointer group/btn"
+                        >
+                          <Eye size={15} className="text-slate-500 group-hover/btn:text-primary" />
+                          <span>View Answer</span>
+                        </button>
 
-                        {q.common_mistakes && (
-                          <div className="p-3.5 rounded-xl bg-rose-50/80 border border-rose-200/80 text-rose-900 space-y-1">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
-                              <X size={14} />
-                              <span>Common Pitfall Candidates Fail On</span>
-                            </div>
-                            <p className="text-xs text-rose-800/90 leading-relaxed">
-                              {q.common_mistakes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Follow-up Questions */}
-                      {q.follow_ups && q.follow_ups.length > 0 && (
-                        <div className="p-3.5 rounded-xl bg-violet-50/60 border border-violet-100 text-gray-700 space-y-1.5">
-                          <div className="text-xs font-bold text-primary flex items-center gap-1.5">
-                            <HelpCircle size={14} />
-                            <span>Expected Follow-up Questions from Panel:</span>
-                          </div>
-                          <ul className="list-disc list-inside text-xs space-y-1 text-gray-600 pl-1">
-                            {q.follow_ups.map((f, idx) => (
-                              <li key={idx}>{f}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Card Bottom Action Bar */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-cream-border">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => handleOpenAiExplainer(q, e)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-100 hover:bg-violet-200 text-primary text-xs font-semibold transition-colors"
-                          >
-                            <Sparkles size={14} />
-                            <span>Ask AI to Explain Concept</span>
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handlePracticeInInterview(q)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-midnight hover:bg-midnight-light text-white text-xs font-semibold shadow-xs transition-all"
-                          >
-                            <Play size={13} className="text-primary-light" />
-                            <span>Test This in AI Mock Interview</span>
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-                  )}
+                        <button
+                          onClick={(e) => toggleBookmark(q.id, e)}
+                          title={isBookmarked ? "Remove Bookmark" : "Save Question"}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                            isBookmarked 
+                              ? 'bg-primary/10 border-primary text-primary' 
+                              : 'border-slate-200 text-slate-400 hover:text-primary hover:border-primary hover:bg-slate-50'
+                          }`}
+                        >
+                          <Bookmark size={15} className={isBookmarked ? 'fill-primary' : ''} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
+        </div>
+          </>
         )}
 
       </main>
 
-      {/* AI Concept Explainer Modal */}
-      {explainingQuestion && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-cream-border overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            
+      {/* ========================================================= */}
+      {/* DETAIL ANSWER MODAL / DRAWER                             */}
+      {/* ========================================================= */}
+      {activeModalQuestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
+          >
             {/* Modal Header */}
-            <div className="p-5 border-b border-cream-border flex items-center justify-between bg-cream/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-xs">
-                  <Sparkles size={18} />
-                </div>
-                <div>
-                  <h3 className="font-display font-bold text-base text-midnight">
-                    AI Concept Explainer & Coach
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {explainingQuestion.company} Interview Track • Personalized Deep Dive
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setExplainingQuestion(null)}
-                className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Language Selection & Question summary */}
-            <div className="p-4 bg-gray-50 border-b border-cream-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="font-medium text-gray-800 line-clamp-1 max-w-md">
-                Q: <span className="font-bold text-midnight">{explainingQuestion.question}</span>
-              </div>
-              
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-gray-500 font-medium">Code Language:</span>
-                {['Java', 'Python', 'C++', 'SQL'].map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => handleLanguageChange(lang)}
-                    className={`px-2 py-1 rounded-md font-semibold transition-colors ${
-                      explainingLang === lang
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Body / Explanation text */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {explanationLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
-                  <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs font-semibold text-gray-500">
-                    AI is preparing an intuitive explanation & custom code for {explainingQuestion.company}...
+            <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${getCategoryBadgeClass(activeModalQuestion.category)}`}>
+                    {activeModalQuestion.category}
+                  </span>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${getDifficultyBadgeClass(activeModalQuestion.difficulty)}`}>
+                    {activeModalQuestion.difficulty}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    • {viewMode === 'drilldown' ? `${currentCompany.name} (${currentDomain.name})` : currentDomain.name}
                   </span>
                 </div>
-              ) : (
-                <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line text-sm leading-relaxed">
-                  {explanationText}
-                </div>
-              )}
+                <h2 className="text-lg md:text-xl font-display font-bold text-slate-900 leading-snug">
+                  {activeModalQuestion.question}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setActiveModalQuestion(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-cream-border bg-gray-50 flex items-center justify-between">
-              <button
-                onClick={() => handleLanguageChange(explainingLang)}
-                disabled={explanationLoading}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-midnight transition-colors"
-              >
-                <RotateCcw size={13} />
-                <span>Regenerate AI Insight</span>
-              </button>
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-slate-800 text-sm leading-relaxed">
+              
+              {/* Summary Callout */}
+              {activeModalQuestion.summary && (
+                <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100 text-purple-950 font-medium">
+                  <span className="font-bold text-primary block text-xs uppercase tracking-wider mb-1">
+                    Quick Takeaway:
+                  </span>
+                  {activeModalQuestion.summary}
+                </div>
+              )}
+
+              {/* Comprehensive Answer */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Detailed Explanation
+                </h4>
+                <div className="prose prose-sm max-w-none text-slate-700 whitespace-pre-line leading-relaxed">
+                  {activeModalQuestion.answer}
+                </div>
+              </div>
+
+              {/* Code Example (if available) */}
+              {activeModalQuestion.code_example && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Code Demonstration ({activeModalQuestion.code_example.language.toUpperCase()})
+                    </span>
+                    <button
+                      onClick={(e) => handleCopyCode(activeModalQuestion.id, activeModalQuestion.code_example.code, e)}
+                      className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline cursor-pointer"
+                    >
+                      {copiedCodeId === activeModalQuestion.id ? (
+                        <>
+                          <Check size={14} className="text-emerald-600" />
+                          <span className="text-emerald-600">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span>Copy Code</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">
+                    <code>{activeModalQuestion.code_example.code}</code>
+                  </pre>
+                </div>
+              )}
+
+              {/* Interviewer Tip */}
+              {activeModalQuestion.interviewer_tip && (
+                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/60">
+                  <span className="font-bold text-amber-900 text-xs uppercase tracking-wider block mb-1">
+                    🎯 Recruiter & Interviewer Tip:
+                  </span>
+                  <p className="text-xs text-amber-800">
+                    {activeModalQuestion.interviewer_tip}
+                  </p>
+                </div>
+              )}
+
+              {/* Common Mistakes */}
+              {activeModalQuestion.common_mistakes && (
+                <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200/60">
+                  <span className="font-bold text-rose-900 text-xs uppercase tracking-wider block mb-1">
+                    ⚠️ Common Candidate Mistake:
+                  </span>
+                  <p className="text-xs text-rose-800">
+                    {activeModalQuestion.common_mistakes}
+                  </p>
+                </div>
+              )}
+
+              {/* Follow-up Questions */}
+              {activeModalQuestion.follow_ups?.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Likely Follow-up Questions:
+                  </span>
+                  <ul className="list-disc pl-5 space-y-1 text-xs text-slate-600">
+                    {activeModalQuestion.follow_ups.map((fu, idx) => (
+                      <li key={idx}>{fu}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* AI Explanation Extension */}
+              {aiExplanation && (
+                <div className="p-4 rounded-2xl bg-violet-50/80 border border-violet-200 text-violet-950 text-xs leading-relaxed">
+                  <div className="flex items-center gap-1.5 font-bold text-primary mb-2">
+                    <Sparkles size={14} />
+                    <span>AI Deep Dive Breakdown</span>
+                  </div>
+                  <div className="whitespace-pre-line text-slate-800">
+                    {aiExplanation}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 md:p-5 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleBookmark(activeModalQuestion.id)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    bookmarks.includes(activeModalQuestion.id)
+                      ? 'bg-primary text-white border-primary shadow-xs'
+                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <Bookmark size={14} className={bookmarks.includes(activeModalQuestion.id) ? 'fill-white' : ''} />
+                  <span>{bookmarks.includes(activeModalQuestion.id) ? 'Saved' : 'Bookmark'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleRequestAiExplanation(activeModalQuestion)}
+                  disabled={explanationLoading}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 border border-slate-200 text-purple-700 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles size={14} className="text-primary" />
+                  <span>{explanationLoading ? 'AI Thinking...' : 'Ask AI Explainer'}</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setExplainingQuestion(null)}
-                  className="px-4 py-2 rounded-xl border border-cream-border bg-white text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                  onClick={() => handleLaunchPractice(activeModalQuestion)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
                 >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    const q = explainingQuestion;
-                    setExplainingQuestion(null);
-                    handlePracticeInInterview(q);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-midnight hover:bg-midnight-light text-white text-xs font-semibold flex items-center gap-1.5 transition-all"
-                >
-                  <Play size={13} className="text-primary-light" />
-                  <span>Start Mock Interview</span>
+                  <Play size={13} className="fill-white" />
+                  <span>Practice in Mock Interview</span>
                 </button>
               </div>
             </div>

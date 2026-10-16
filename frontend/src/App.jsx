@@ -66,7 +66,7 @@ function App() {
             
             {/* Protected Candidate Dashboard & Operations */}
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/question-bank" element={<PrivateRoute><QuestionBank /></PrivateRoute>} />
+            <Route path="/question-bank" element={<QuestionBank />} />
             <Route path="/questions" element={<Navigate to="/question-bank" replace />} />
             <Route path="/resume" element={<PrivateRoute><ResumePage /></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><InterviewHistory /></PrivateRoute>} />
