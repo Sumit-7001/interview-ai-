@@ -267,12 +267,27 @@ async def interview_websocket(
                 fresh_qs = interview_check.get("questions", []) if interview_check else []
                 unanswered = next((q for q in fresh_qs if q.get("answer_text") is None), None)
 
+                domain_str = (company_domain or "").lower()
+                role_lower = (role or "").lower()
+                is_data_analyst = "analyst" in role_lower or "data" in role_lower or "analytics" in role_lower or "bi" in role_lower
+                is_tcs = "tcs" in domain_str
+
                 if unanswered and unanswered.get("question_text"):
                     # Use existing Question #1 from POST /api/interviews
                     current_question_text = unanswered["question_text"]
                     question_number = unanswered.get("id", 1)
-                    stage = "project_overview"
-                    q_type = "project_opening"
+                    if is_tcs and is_data_analyst:
+                        stage = "tcs_data_analyst"
+                        q_type = "tcs_data_analyst"
+                    elif is_data_analyst:
+                        stage = "data_analyst"
+                        q_type = "data_analyst"
+                    elif is_tcs:
+                        stage = "company_curated"
+                        q_type = "company_curated"
+                    else:
+                        stage = "project_overview"
+                        q_type = "project_opening"
                 else:
                     # Generate opening question only if none exists in DB
                     opening_res = await generate_opening_question(

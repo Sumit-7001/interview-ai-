@@ -6,7 +6,370 @@ Includes questions from TCS, Capgemini, Infosys, Wipro, Accenture, Cognizant, an
 from typing import List, Dict, Any
 
 CURATED_QUESTION_BANK: List[Dict[str, Any]] = [
-    # ── TCS QUESTIONS ─────────────────────────────────────────────────────────
+    # ── TCS DATA ANALYST QUESTIONS (AUTHENTIC AMBITIONBOX CURRICULUM) ───────────
+    {
+        "id": "tcs-da-01",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Excel",
+        "difficulty": "Easy",
+        "frequency": "96% (Top in TCS Data Analyst)",
+        "question": "Can you describe your basic computer skills and analytical toolkit with MS Excel, SQL, and Python?",
+        "summary": "Proficient in MS Office Suite (Excel, Word, PowerPoint), data management with SQL, basic programming in Python, and internet research.",
+        "answer": """Proficient in essential computer skills including MS Office, data management, basic programming, and internet research.
+- **Microsoft Office Suite:** Advanced Excel for data analysis (Pivot Tables, VLOOKUP, INDEX/MATCH, nested IF, Power Query), Word for documentation, and PowerPoint for executive client presentations.
+- **Data Management & Databases:** SQL for querying relational databases, filtering, aggregations, and data validation.
+- **Programming & Scripting:** Basic Python (pandas, numpy) for manipulating tabular datasets and cleaning dirty records.
+- **Research & Collaboration:** Skilled in web research, enterprise documentation, and version control.""",
+        "code_example": {
+            "language": "python",
+            "code": """# Basic data validation in Python:
+import pandas as pd
+df = pd.read_excel('sales_data.xlsx')
+print(df.info())
+print(df.describe())"""
+        },
+        "interviewer_tip": "TCS technical interviewers look for practical familiarity with Excel formulas and structured data querying in SQL.",
+        "common_mistakes": "Listing software without giving specific examples of how you used them in projects.",
+        "follow_ups": [
+            "Which Excel formulas do you use most frequently for data cleanup?",
+            "How do you connect Excel to SQL Server?"
+        ]
+    },
+    {
+        "id": "tcs-da-02",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Business Analytics",
+        "difficulty": "Medium",
+        "frequency": "93% (High in TCS Enterprise)",
+        "question": "What is SAP MM and what are its main functions in enterprise procurement and inventory management?",
+        "summary": "SAP Materials Management (MM) is a core module in SAP ERP managing procurement processes, inventory control, and vendor evaluation.",
+        "answer": """SAP MM stands for **Materials Management**, a foundational module in SAP ERP focused on procurement and inventory management.
+- **Core Functions:**
+  1. **Procurement Process:** Manages purchase requisitions, quotation requests, purchase orders, and invoice verification.
+  2. **Inventory Management:** Handles goods receipt, goods issue, stock transfers, and physical inventory audits.
+  3. **Master Data Maintenance:** Stores and manages Material Master and Vendor Master records.
+  4. **Integration:** Seamlessly integrates with SAP FI (Finance), CO (Controlling), SD (Sales & Distribution), and PP (Production Planning).""",
+        "code_example": {
+            "language": "text",
+            "code": "Procurement Lifecycle: Purchase Requisition (PR) -> Purchase Order (PO) -> Goods Receipt (GR) -> Invoice Verification (IR) -> Vendor Payment"
+        },
+        "interviewer_tip": "Highlight how data analysts leverage SAP MM table exports (e.g., EKKO, EKPO, MARA) to analyze procurement spend and lead times.",
+        "common_mistakes": "Confusing SAP MM with SAP SD (Sales and Distribution).",
+        "follow_ups": [
+            "What are the key tables in SAP MM?",
+            "How do you extract data from SAP for BI reporting?"
+        ]
+    },
+    {
+        "id": "tcs-da-03",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Business Analytics",
+        "difficulty": "Easy",
+        "frequency": "90% (Common in TCS Client Rounds)",
+        "question": "What is the difference between a Purchase Requisition and a Purchase Order?",
+        "summary": "A Purchase Requisition (PR) is an internal document requesting purchase approval, while a Purchase Order (PO) is a legally binding contract sent to an external vendor.",
+        "answer": """Key differences between PR and PO:
+- **Purchase Requisition (PR):**
+  - **Type:** Internal document created by employees or department heads.
+  - **Purpose:** Requests permission from internal management to purchase goods or services.
+  - **Legal Standing:** No legal obligation to external parties.
+  - **Recipient:** Internal purchasing department.
+- **Purchase Order (PO):**
+  - **Type:** External legally binding commercial contract.
+  - **Purpose:** Authorizes the vendor to deliver specified items at agreed prices and delivery timelines.
+  - **Legal Standing:** Legally enforceable upon vendor acceptance.
+  - **Recipient:** External supplier / vendor.""",
+        "code_example": {
+            "language": "sql",
+            "code": """-- Querying open Purchase Orders without a matching Goods Receipt:
+SELECT po.po_number, po.vendor_id, po.order_date, po.total_amount
+FROM purchase_orders po
+LEFT JOIN goods_receipts gr ON po.po_number = gr.po_number
+WHERE gr.receipt_id IS NULL AND po.status = 'Approved';"""
+        },
+        "interviewer_tip": "Frame this in terms of internal enterprise workflow and spend governance.",
+        "common_mistakes": "Believing that a PR can be sent directly to suppliers.",
+        "follow_ups": ["Can multiple Purchase Requisitions be combined into a single Purchase Order?"]
+    },
+    {
+        "id": "tcs-da-04",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Business Analytics",
+        "difficulty": "Easy",
+        "frequency": "88% (TCS Supply Chain & Audit)",
+        "question": "What is the difference between a Purchase Order (PO) and a Goods Receipt (GR), and what is 3-way matching?",
+        "summary": "A Purchase Order orders items from a supplier; a Goods Receipt confirms physical delivery and updates warehouse inventory levels.",
+        "answer": """Comparison between PO and Goods Receipt (GR):
+- **Purchase Order (PO):**
+  - Issued **before** delivery by buyer to supplier specifying quantity, specifications, and negotiated price.
+  - Establishes expected liabilities and commitments.
+- **Goods Receipt (GR):**
+  - Generated **after** physical delivery at warehouse/receiving dock.
+  - Confirms actual quantity received, condition of goods, and date.
+  - Triggers accounting entry: Debit Inventory, Credit GR/IR Clearing Account.
+- **3-Way Matching:** Crucial audit control comparing PO, GR, and Supplier Invoice before payment is released.""",
+        "code_example": {
+            "language": "sql",
+            "code": """-- Three-way matching reconciliation query:
+SELECT po.po_number, po.qty AS po_qty, gr.qty AS received_qty, inv.qty AS invoiced_qty
+FROM PO_Items po
+JOIN GR_Items gr ON po.po_number = gr.po_number
+JOIN Invoice_Items inv ON po.po_number = inv.po_number
+WHERE po.qty <> gr.qty OR gr.qty <> inv.qty;"""
+        },
+        "interviewer_tip": "Mention the '3-way matching' concept (PO vs GR vs Invoice). TCS client interviewers love candidates who understand this audit control.",
+        "common_mistakes": "Thinking a Goods Receipt is an invoice.",
+        "follow_ups": ["What happens when received goods are damaged or short-shipped?"]
+    },
+    {
+        "id": "tcs-da-05",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Data Analysis",
+        "difficulty": "Easy",
+        "frequency": "94% (Core Data Fundamentals)",
+        "question": "What is data and what are its main classifications (Structured, Semi-structured, Unstructured)?",
+        "summary": "Data represents raw facts and observations. It is classified into structured (tables), semi-structured (JSON/XML), and unstructured (audio/video/text).",
+        "answer": """Data is raw facts, statistics, and observations captured from business transactions, sensors, or systems.
+- **Classifications:**
+  1. **Structured Data:** Highly organized in rows and columns with fixed schemas (e.g., PostgreSQL, Oracle, MySQL, CSV). Easily queried with SQL.
+  2. **Semi-Structured Data:** Does not conform to rigid relational schema but contains tags, markers, or hierarchical keys (e.g., JSON API payloads, XML, NoSQL documents).
+  3. **Unstructured Data:** Has no predefined data model (e.g., customer call audio, PDF contracts, emails, social media images). Comprises ~80% of enterprise data.
+- **Data Lifecycle:** Collection -> Ingestion -> Cleaning/ETL -> Storage/Warehousing -> Analytics/Reporting -> Machine Learning.""",
+        "code_example": {
+            "language": "python",
+            "code": """# Working with semi-structured JSON in Python:
+import json, pandas as pd
+json_data = '[{"id": 1, "customer": "TCS", "metrics": {"nps": 9, "spend": 12000}}]'
+df = pd.json_normalize(json.loads(json_data))
+print(df)"""
+        },
+        "interviewer_tip": "Always emphasize how raw data is converted into actionable business intelligence through cleaning and context.",
+        "common_mistakes": "Assuming semi-structured data cannot be queried with SQL (modern SQL engines support JSON functions).",
+        "follow_ups": ["How does a Data Lake handle unstructured data compared to a Data Warehouse?"]
+    },
+    {
+        "id": "tcs-da-06",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Data Analysis",
+        "difficulty": "Medium",
+        "frequency": "95% (Top TCS HR & Technical)",
+        "question": "What are the roles & responsibilities of a Data Analyst at TCS?",
+        "summary": "TCS Data Analysts design data models, execute SQL queries, build interactive dashboards, communicate with global stakeholders, and maintain data quality.",
+        "answer": """Key roles and responsibilities at Tata Consultancy Services (TCS):
+1. **Data Modeling & Architecture:** Design conceptual, logical, and physical data models to capture business workflows.
+2. **Data Extraction & Transformation (ETL):** Write robust SQL queries and Python scripts to extract data from disparate ERP/CRM sources.
+3. **Data Quality & Hygiene:** Detect anomalies, handle missing values, and validate pipeline outputs against source systems.
+4. **BI Dashboarding:** Build automated Power BI or Tableau dashboards tracking enterprise KPIs.
+5. **Business Stakeholder Collaboration:** Translate complex business requirements into technical metrics and deliver executive presentations.""",
+        "code_example": {
+            "language": "text",
+            "code": "Daily Deliverables: Ad-hoc SQL Analysis | Sprint Backlog Grooming | Automated ETL Monitoring | Stakeholder KPI Reporting"
+        },
+        "interviewer_tip": "Show that you are comfortable working in Agile sprints and communicating technical findings to non-technical business clients.",
+        "common_mistakes": "Focusing solely on coding without mentioning business problem solving.",
+        "follow_ups": ["How do you handle changing client requirements during a data project?"]
+    },
+    {
+        "id": "tcs-da-07",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "SQL & DBMS",
+        "difficulty": "Medium",
+        "frequency": "98% (Most Frequent in TCS SQL)",
+        "question": "Explain the functions in SQL (Aggregate vs Scalar) and write an example combining both.",
+        "summary": "SQL functions include Aggregate (operate on multiple rows returning one summary) and Scalar (operate on single values).",
+        "answer": """This question evaluates database querying proficiency:
+- **SQL Functions:**
+  - **Aggregate Functions:** Operate on a collection of rows and return a single summary value (e.g., SUM(), AVG(), COUNT(), MIN(), MAX()). Frequently used with GROUP BY.
+  - **Scalar Functions:** Operate on a single input value and return a single modified value (e.g., UPPER(), LOWER(), ROUND(), DATEPART(), COALESCE()).
+- Combining both in queries allows calculating rounded averages, formatted totals, and uppercase labels directly in reporting pipelines.""",
+        "code_example": {
+            "language": "sql",
+            "code": """-- Combining Scalar and Aggregate functions:
+SELECT department_id,
+       COUNT(employee_id) AS total_employees,
+       ROUND(AVG(salary), 2) AS rounded_avg_salary,
+       UPPER(MAX(employee_name)) AS top_earner_name
+FROM Employees
+GROUP BY department_id;"""
+        },
+        "interviewer_tip": "Give concise definitions and provide immediate SQL code showing both aggregate and scalar functions in one query.",
+        "common_mistakes": "Attempting to use Aggregate functions in a WHERE clause without HAVING.",
+        "follow_ups": ["Why can't aggregate functions be used in a WHERE clause?"]
+    },
+    {
+        "id": "tcs-da-08",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Power BI",
+        "difficulty": "Medium",
+        "frequency": "91% (TCS BI Track)",
+        "question": "Difference between Power BI and Tableau: advantages and limitations of both.",
+        "summary": "Power BI offers tight Microsoft integration, lower pricing, and strong DAX modeling; Tableau offers superior custom visualization and handles massive datasets.",
+        "answer": """Comparison between Power BI and Tableau:
+- **Power BI:**
+  - **Advantages:** Deep integration with Microsoft 365, Teams, and Azure; cost-effective ($10/user/mo Pro license); Power Query ETL engine is very familiar to Excel users; DAX language for advanced modeling.
+  - **Limitations:** File size limits on cloud service (1GB/dataset without Premium); less flexible custom chart styling.
+- **Tableau:**
+  - **Advantages:** Best-in-class interactive visual storytelling; handles very large datasets efficiently; rich community of visual designers (Tableau Public).
+  - **Limitations:** Significantly higher licensing costs; steeper learning curve for non-technical business users.""",
+        "code_example": {
+            "language": "text",
+            "code": "Recommendation Guide:\n- Choose Power BI for: Microsoft enterprise stacks, budget sensitivity, self-service BI.\n- Choose Tableau for: Complex exploratory visual analytics, graphic-intensive executive presentations."
+        },
+        "interviewer_tip": "Mention that TCS delivers solutions in both tools depending on whether the client operates on an Azure/Microsoft stack or AWS/Salesforce stack.",
+        "common_mistakes": "Claiming one is objectively 'better' rather than evaluating trade-offs.",
+        "follow_ups": ["What is DAX in Power BI and how does it compare to Tableau Calculated Fields?"]
+    },
+    {
+        "id": "tcs-da-09",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "Power BI",
+        "difficulty": "Hard",
+        "frequency": "89% (TCS Enterprise Security)",
+        "question": "What is Row-Level Security (RLS) in Power BI and how do you implement Dynamic RLS?",
+        "summary": "Row-Level Security (RLS) restricts data access for specific users based on filter rules defined in Power BI Desktop and mapped in Power BI Service.",
+        "answer": """Row-Level Security (RLS) restricts data rows that individual users can see when viewing a published report.
+- **Implementation Steps:**
+  1. **Define Roles in Power BI Desktop:** Navigate to Modeling -> Manage Roles. Create a role (e.g., 'West Region') and write a DAX filter: [Region] = "West".
+  2. **Dynamic RLS:** Use dynamic DAX functions: [UserEmail] = USERPRINCIPALNAME() so users only see rows matching their logged-in Azure AD identity.
+  3. **Publish to Power BI Service:** Publish the report to the workspace.
+  4. **Assign Members in Service:** Go to Dataset Security and assign Azure AD security groups or emails to the defined roles.
+  5. **Validate:** Use 'Test as role' in Power BI Service to verify correct data restriction.""",
+        "code_example": {
+            "language": "text",
+            "code": "-- Dynamic RLS DAX Expression:\n[SalesManagerEmail] = USERPRINCIPALNAME()"
+        },
+        "interviewer_tip": "Distinguish between Static RLS (hardcoded roles) and Dynamic RLS (using USERPRINCIPALNAME). TCS enterprise clients always demand Dynamic RLS.",
+        "common_mistakes": "Assuming RLS restricts visual elements rather than data rows in the underlying model.",
+        "follow_ups": ["Does RLS apply to Workspace Admins and Members? (Answer: No, only Viewers)."]
+    },
+    {
+        "id": "tcs-da-10",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "SQL & DBMS",
+        "difficulty": "Medium",
+        "frequency": "97% (Core Database Knowledge)",
+        "question": "Explain SQL Constraints and types of Joins (Primary Key, Foreign Key, Inner, Left, Full Outer).",
+        "summary": "Constraints enforce relational data integrity (NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, CHECK). Joins merge records from multiple tables based on related keys.",
+        "answer": """Foundational SQL concepts:
+- **Constraints:**
+  - **NOT NULL:** Prohibits null values in a column.
+  - **UNIQUE:** Ensures all values in a column are distinct.
+  - **PRIMARY KEY:** Uniquely identifies each row (combines NOT NULL + UNIQUE).
+  - **FOREIGN KEY:** Enforces referential integrity by linking to a primary key in another table.
+  - **CHECK:** Validates that values satisfy a specific logical condition.
+- **Joins:**
+  - **INNER JOIN:** Returns records with matching values in both tables.
+  - **LEFT JOIN:** Returns all records from the left table and matched records from the right table (NULL if no match).
+  - **RIGHT JOIN:** Returns all records from right table and matched from left.
+  - **FULL OUTER JOIN:** Returns all records when there is a match in either left or right table.""",
+        "code_example": {
+            "language": "sql",
+            "code": """-- Enforcing Foreign Key and querying with LEFT JOIN:
+SELECT c.customer_name, o.order_id, o.order_total
+FROM Customers c
+LEFT JOIN Orders o ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL; -- Identifies customers with 0 orders"""
+        },
+        "interviewer_tip": "Give a concrete business use case for LEFT JOIN (e.g., finding inactive customers who have never placed an order).",
+        "common_mistakes": "Confusing WHERE filters with ON join conditions in LEFT JOINs.",
+        "follow_ups": ["What is a Cross Join and what is its computational complexity?"]
+    },
+    {
+        "id": "tcs-da-11",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "Technical Round",
+        "category": "SQL & DBMS",
+        "difficulty": "Medium",
+        "frequency": "99% (Universal TCS SQL Interview Question)",
+        "question": "Write a SQL query to find the 2nd highest salary from an Employee table without using LIMIT or TOP.",
+        "summary": "Find the second highest salary using a correlated subquery, DENSE_RANK() window function, or MAX() with WHERE condition.",
+        "answer": """Three standard methods to find the 2nd highest salary:
+- **Method 1: Subquery with MAX() (Universal SQL):**
+SELECT MAX(salary) AS second_highest_salary
+FROM Employee
+WHERE salary < (SELECT MAX(salary) FROM Employee);
+
+- **Method 2: Window Function DENSE_RANK() (Handles duplicates cleanly):**
+WITH RankedSalaries AS (
+    SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rank_pos
+    FROM Employee
+)
+SELECT salary AS second_highest_salary
+FROM RankedSalaries
+WHERE rank_pos = 2;
+
+- **Why DENSE_RANK() over RANK():** If two employees tie for highest salary, RANK() skips 2 and assigns 3 to the next salary, whereas DENSE_RANK() correctly assigns rank 2.""",
+        "code_example": {
+            "language": "sql",
+            "code": """-- Optimal approach using CTE & DENSE_RANK():
+WITH CTE AS (
+    SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) as rnk
+    FROM Employees
+)
+SELECT MAX(salary) FROM CTE WHERE rnk = 2;"""
+        },
+        "interviewer_tip": "Always explain why DENSE_RANK() is preferred over RANK() when salaries contain duplicate entries.",
+        "common_mistakes": "Using LIMIT 1 OFFSET 1 without handling duplicates, which returns the highest salary twice if there is a tie.",
+        "follow_ups": ["How would you extend this query to find the N-th highest salary dynamically?"]
+    },
+    {
+        "id": "tcs-da-12",
+        "company": "TCS",
+        "company_tag": "TCS NQT / Digital",
+        "role": "Data Analyst",
+        "round": "HR Round",
+        "category": "HR",
+        "difficulty": "Easy",
+        "frequency": "96% (TCS HR Assessment)",
+        "question": "Why do you want to join TCS as a Data Analyst?",
+        "summary": "TCS offers unparalleled global scale, diverse enterprise projects, robust training through TCS iON/Elevate, and high job stability.",
+        "answer": """Structured HR response:
+"I want to join TCS because of its prestigious reputation for technological excellence, strong ethical culture, and global footprint across Fortune 500 enterprise clients. 
+As a Data Analyst:
+1. **Exposure to Scale:** TCS works with massive data architectures in BFSI, retail, healthcare, and telecommunications, offering unprecedented opportunities to solve high-impact analytical challenges.
+2. **Continuous Learning:** TCS's culture of internal reskilling through platforms like TCS iON, Elevate, and Wings ensures continuous career development in cutting-edge BI and AI tools.
+3. **Collaboration:** Working alongside domain specialists and experienced data architects provides the ideal environment to grow from a junior analyst into a well-rounded enterprise data consultant." """,
+        "code_example": {
+            "language": "text",
+            "code": "Key Themes: Global Scale | Enterprise Data Quality | Continuous Upskilling | Tata Ethical Values"
+        },
+        "interviewer_tip": "Mention Tata's values and specific TCS initiatives like Digital Workspace and continuous certification.",
+        "common_mistakes": "Giving generic answers that could apply to any software firm without mentioning TCS-specific merits.",
+        "follow_ups": ["Are you comfortable working in client-facing rotational shifts or different geographic locations?"]
+    },
+    # ── TCS GENERAL / SOFTWARE ENGINEER QUESTIONS ─────────────────────────────
     {
         "id": "tcs-01",
         "company": "TCS",
@@ -2774,11 +3137,12 @@ COMPANIES_METADATA = [
         "rounds": [
             {"name": "NQT Foundation", "desc": "Numerical Ability, Verbal & Reasoning (60m)"},
             {"name": "NQT Advanced", "desc": "Advanced Quantitative & 2 Coding Problems (40m)"},
+            {"name": "Data Analyst & Analytics Track", "desc": "SQL, Advanced Excel, Power BI/Tableau, SAP MM, ETL & Business KPIs"},
             {"name": "Technical Interview", "desc": "OOPs, DBMS, Stack/Heap memory, DSA & Projects"},
             {"name": "Managerial & HR", "desc": "Relocation, shifts, Tata culture & behavioral STAR"}
         ],
-        "key_topics": ["Stack vs Heap Memory", "Call by Value/Ref", "Method Overloading/Overriding", "ACID in DBMS", "SQL 2nd Highest Salary", "Linked List", "Arrays", "Balanced Parentheses", "DELETE vs TRUNCATE"],
-        "total_questions": 18,
+        "key_topics": ["TCS Analytical Toolkit", "Excel & Power BI (DAX/RLS)", "SAP MM Procurement (PR vs PO)", "SQL Aggregate vs Scalar", "SQL 2nd Highest Salary", "Data Cleaning & IQR Outliers", "Stack vs Heap Memory", "ACID in DBMS"],
+        "total_questions": 30,
         "accent": "rose"
     },
     {

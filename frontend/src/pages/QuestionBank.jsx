@@ -148,12 +148,25 @@ const QuestionBank = () => {
 
   // Practice in Mock Interview
   const handleLaunchPractice = (question) => {
-    const domainName = currentDomain.name;
-    const companyName = viewMode === 'drilldown' ? currentCompany.name : '';
+    const domainName = currentDomain?.name || 'Data Analyst';
+    const companyName = viewMode === 'drilldown' ? (currentCompany?.name || 'TCS') : 'TCS';
+    const isDA = domainName.toLowerCase().includes('data analyst') || selectedDomainId === 'data-analyst';
+    const roleName = isDA ? 'Data Analyst' : 'Software Engineer';
+    
+    let compDomain = 'TCS NQT / Digital';
+    if (companyName.toLowerCase().includes('wipro')) compDomain = 'Wipro Elite & Turbo';
+    else if (companyName.toLowerCase().includes('infosys')) compDomain = 'Infosys DSE / Specialist';
+    else if (companyName.toLowerCase().includes('capgemini')) compDomain = 'Capgemini Technical';
+    else if (companyName.toLowerCase().includes('accenture')) compDomain = 'Accenture Cognitive & Technical';
+    else if (companyName.toLowerCase().includes('cognizant')) compDomain = 'Cognizant GenC & GenC Next';
+
     navigate('/dashboard', { 
       state: { 
-        autoSelectDomain: companyName ? `${domainName} - ${companyName}` : domainName, 
-        focusQuestion: question?.question || '' 
+        autoSelectDomain: `${domainName} - ${companyName}`, 
+        focusQuestion: question?.question || '',
+        role: roleName,
+        companyDomain: compDomain,
+        autoLaunch: true,
       } 
     });
   };

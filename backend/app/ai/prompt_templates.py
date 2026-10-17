@@ -241,34 +241,55 @@ def resume_opening_question_prompt(
 
     domain_clause = f"\nTARGET COMPANY/DOMAIN FOCUS: {company_domain}\nTailor the technical depth, question style, and core CS / domain concepts to align with {company_domain} interview standards (e.g. TCS NQT, Capgemini technical rounds, Banking security, Cloud architectures).\n" if company_domain else ""
 
-    if not has_resume_data:
-        # No resume uploaded — generate a general technical opening question
-        return f"""/nothink
-You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).{domain_clause}
+    role_lower = role.lower()
+    domain_lower = (company_domain or "").lower()
+    is_data_analyst = "analyst" in role_lower or "data" in role_lower or "analytics" in role_lower or "bi" in role_lower
+    is_tcs = "tcs" in domain_lower
 
-The candidate has NOT uploaded a resume yet.
+    # Check if candidate has any data/analytics-specific projects
+    data_keywords = ["sql", "data", "analytics", "analysis", "pandas", "tableau", "power bi", "bi", "etl", "warehouse", "excel", "reporting", "dashboard", "spark"]
+    has_data_project = any(
+        any(k in str(p.get("name", "")).lower() or k in str(p.get("description", "")).lower() or any(k in str(t).lower() for t in p.get("technologies", [])) for k in data_keywords)
+        for p in projects
+    )
+
+    if not has_resume_data or (is_data_analyst and not has_data_project):
+        # No resume uploaded, OR candidate is applying for Data Analyst but only has unrelated web/software projects
+        curriculum_context = ""
+        if is_tcs and is_data_analyst:
+            curriculum_context = """
+TARGET TRACK: TCS Data Analyst (AmbitionBox Curriculum)
+Foundational TCS Data Analyst topics to draw from:
+1. Analytical toolkit: MS Excel (Pivot Tables, VLOOKUP, Power Query), SQL data manipulation, Python (pandas/numpy), Power BI.
+2. Roles & responsibilities of a Data Analyst at Tata Consultancy Services (TCS).
+3. Enterprise ERP & Procurement: SAP MM functions, Purchase Requisition (PR) vs Purchase Order (PO), Goods Receipt (GR), 3-way matching.
+4. Business Intelligence: Power BI vs Tableau, Row-Level Security (RLS) with USERPRINCIPALNAME().
+5. SQL Querying: Aggregate vs Scalar functions, Joins, subqueries, 2nd highest salary with DENSE_RANK().
+6. Data Quality: Handling missing values, duplicates, and outlier detection with IQR."""
+        
+        return f"""/nothink
+You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).{domain_clause}{curriculum_context}
 
 CRITICAL RULES FOR FIRST QUESTION:
 1. NEVER fabricate or invent projects, companies, or technologies the candidate has not mentioned.
-2. NEVER say "I noticed you built..." or reference any specific project since no resume is available.
-3. Ask a GENERAL, ROLE-SPECIFIC TECHNICAL QUESTION appropriate for a {experience_level} {role}.
-4. The question should test fundamental technical knowledge relevant to {role}.
-5. Focus on real-world system design, core concepts, or problem-solving for {role}.
-6. Keep the tone professional, welcoming, and focused on technical depth.
+2. NEVER ask web development or full-stack software architecture questions when interviewing for {role}.
+3. Ask an AUTHENTIC, ROLE-SPECIFIC TECHNICAL QUESTION appropriate for a {experience_level} {role}.
+4. For TCS Data Analyst, focus on: Analytical Toolkit (Excel, SQL, Power BI, Python), Roles of a Data Analyst at TCS, SQL Functions, or Enterprise Procurement (SAP MM).
+5. Keep the tone professional, welcoming, and directly focused on data skills and business analytics.
 
-EXAMPLE good questions (pick the style most fitting for {role}):
-- "Can you walk me through the architecture of a typical full-stack web application and where you see the most challenging design decisions?"
-- "Describe how you would design a scalable REST API from scratch for a high-traffic e-commerce platform."
-- "What data structures or algorithms do you consider most important for {role}, and when have you applied them?"
+EXAMPLE good opening questions for {role}:
+- "Welcome to the TCS Data Analyst Technical Assessment! Can you describe your basic computer skills and analytical toolkit — specifically how you leverage MS Excel, SQL, and Python or Power BI for data extraction and business reporting?"
+- "What are the primary roles and responsibilities of a Data Analyst at TCS when delivering insights to enterprise stakeholders?"
+- "Can you explain how you use SQL aggregate and scalar functions to calculate KPIs, and give an example combining both in one query?"
 
 Output ONLY a valid JSON object in this exact format:
 {{
-  "question": "Your role-specific technical question here",
-  "target_topic": "Core technical topic being assessed",
-  "reasoning": "Why this general question is appropriate since no resume was provided"
+  "question": "Your opening question here",
+  "target_topic": "Core technical topic being assessed (e.g. TCS Analytical Toolkit & SQL)",
+  "reasoning": "Why this opening question was chosen for {role} at {company_domain}"
 }}"""
 
-    # Resume data is available — generate a resume-driven opening question
+    # Resume data is available AND candidate has relevant projects — generate a resume-driven opening question
     return f"""/nothink
 You are a senior technical interviewer opening an interview for the {role} position ({experience_level} level, {interview_type} format).{domain_clause}
 
@@ -276,19 +297,18 @@ CANDIDATE'S FULL STRUCTURED RESUME CONTEXT:
 {resume_context_json}
 
 CRITICAL RULES FOR FIRST QUESTION:
-1. STRICTLY FORBIDDEN: NEVER ask generic questions like "Tell me about yourself", "What are your strengths?", or "Walk me through your resume."
-2. DIRECT RESUME CITATION: Your opening question MUST directly reference a SPECIFIC project, system, or work experience from their resume, including the actual technologies used.
-3. ARCHITECTURE & CONTRIBUTION: Ask the candidate to explain the architecture of that specific project and what parts they personally designed and built.
-4. REQUIRED FORMAT EXAMPLE:
-   "I noticed you built an [Project Name] using [Tech 1, Tech 2, and Tech 3]. Can you explain its architecture and your personal contribution to it?"
-5. Keep the tone professional, welcoming, and directly focused on their technical work.
+1. STRICTLY FORBIDDEN: NEVER ask generic questions like "Tell me about yourself" or "What are your strengths?".
+2. RELEVANCE TO TARGET ROLE: The question MUST evaluate skills directly required for {role} (e.g. for Data Analyst: data models, SQL queries, data cleaning, dashboards, business insights).
+3. If candidate has a relevant data or analytics project, ask them to explain the data pipeline, schema design, analytical methods, and business findings.
+4. If candidate's background includes SQL or data tools, ask how they applied them in their projects.
+5. Keep the tone professional, welcoming, and directly focused on their technical and analytical work.
 6. NEVER invent projects that are not in the resume context above.
 
 Output ONLY a valid JSON object in this exact format:
 {{
-  "question": "I noticed you built [Project Name] using [Technologies]. Can you explain the architecture and your personal contribution?",
-  "target_topic": "The exact project name or primary topic",
-  "reasoning": "Why this opening question was chosen based on the resume"
+  "question": "Your tailored opening question referencing their technical work",
+  "target_topic": "The exact project name or analytical topic",
+  "reasoning": "Why this opening question was chosen based on the resume and target role"
 }}"""
 
 
@@ -370,6 +390,11 @@ CRITICAL CONVERSATIONAL DEPENDENCY & COUNTER-QUESTIONING RULES:
        → You MUST ask a deeper follow-up exploring that exact claim: "You mentioned asynchronous APIs. Where did you use asynchronous processing in your project, and what benefit did it provide?"
      • If candidate stated: "I used it for real-time communication."
        → You MUST drill deeper into that exact mechanism: "How did you implement real-time communication in your application, and why did you choose WebSockets?"
+      - If candidate is in a Data Analyst track (e.g. TCS Data Analyst):
+        * If candidate mentioned SQL: drill into query design, joins (INNER vs LEFT), aggregate vs scalar functions, or window functions (e.g. DENSE_RANK for 2nd highest salary).
+        * If candidate mentioned Excel or Power BI: ask about Pivot Tables, VLOOKUP, DAX measures, or Dynamic Row-Level Security (RLS).
+        * If candidate mentioned data cleaning: ask how they handle missing null values, deduplication, and outliers with IQR in Pandas or Excel.
+        * If candidate mentioned enterprise business systems: ask about SAP MM, procurement workflows (PR vs PO), or 3-way matching.
 2. STRICTLY FORBIDDEN — NO GENERIC RESET QUESTIONS:
    - Do NOT ask generic reset questions like "What does your project do?", "Can you explain what the system does?", or "What are your strengths?" when the candidate has already answered.
    - Do NOT ignore what the candidate just said. Every follow-up question must be an organic consequence of their previous response.

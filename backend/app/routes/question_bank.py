@@ -35,6 +35,7 @@ async def get_questions(
     company: Optional[str] = Query(None, description="Filter by company name (e.g. TCS, Capgemini)"),
     round: Optional[str] = Query(None, description="Filter by round name (e.g. Technical, Pseudocode, HR)"),
     category: Optional[str] = Query(None, description="Filter by category (e.g. OOPs, DBMS, Core CS)"),
+    role: Optional[str] = Query(None, description="Filter by role (e.g. Data Analyst)"),
     difficulty: Optional[str] = Query(None, description="Filter by difficulty (Easy, Medium, Hard)"),
     search: Optional[str] = Query(None, description="Search term in question text or answer"),
 ):
@@ -50,6 +51,10 @@ async def get_questions(
             if c_low in q["company"].lower() 
             or c_low in q.get("company_tag", "").lower()
         ]
+
+    if role and role.lower() != "all":
+        role_low = role.lower()
+        results = [q for q in results if role_low in q.get("role", "").lower()]
 
     if round and round.lower() != "all":
         r_low = round.lower()

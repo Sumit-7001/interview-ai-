@@ -422,3 +422,14 @@ export const NetworksIcon = ({ className = "w-6 h-6" }) => (
     <path d="M10 7L6.5 15.5M14 7L17.5 15.5M7.5 18H16.5" stroke="#14B8A6" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
+
+// 13. Data Analyst / Analytics
+export const DataAnalystIcon = ({ className = "w-6 h-6" }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="13" width="4" height="8" rx="1" fill="#3B82F6" />
+    <rect x="10" y="8" width="4" height="13" rx="1" fill="#8B5CF6" />
+    <rect x="17" y="4" width="4" height="17" rx="1" fill="#10B981" />
+    <path d="M4 11L10 6L16 10L21 4" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+

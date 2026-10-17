@@ -1273,7 +1273,13 @@ const InterviewRoom = () => {
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
                 {/* Question Type Badge */}
                 <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                  (dynamicQuestion?.question_type === 'project_opening' || (!wsMode && currentQIndex === 0))
+                  (dynamicQuestion?.question_type === 'tcs_data_analyst')
+                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+                    : (dynamicQuestion?.question_type === 'data_analyst')
+                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+                    : (dynamicQuestion?.question_type === 'company_curated')
+                    ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+                    : (dynamicQuestion?.question_type === 'project_opening')
                     ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
                     : (dynamicQuestion?.question_type === 'counter_question' || dynamicQuestion?.stage === 'counter_question')
                     ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
@@ -1283,12 +1289,16 @@ const InterviewRoom = () => {
                     ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                     : 'bg-primary/15 border-primary/30 text-primary-light'
                 }`}>
-                  {dynamicQuestion?.question_type === 'project_opening' ? '📄 Resume Project' :
+                  {dynamicQuestion?.question_type === 'tcs_data_analyst' ? '🏢 TCS Question Bank' :
+                   dynamicQuestion?.question_type === 'data_analyst' ? '📊 Data Analyst Track' :
+                   dynamicQuestion?.question_type === 'company_curated' ? '🏢 Company Question Bank' :
+                   dynamicQuestion?.question_type === 'project_opening' ? '📄 Resume Project' :
                    dynamicQuestion?.question_type === 'counter_question' ? '🎯 Counter Question' :
                    dynamicQuestion?.question_type === 'clarification' ? '💡 Clarification' :
                    dynamicQuestion?.question_type === 'scenario' ? '🚀 Scenario & Scale' :
                    dynamicQuestion?.question_type === 'follow_up' ? '🔍 Deep-Dive' :
-                   (!wsMode && currentQIndex === 0) ? '📄 Resume Project' : '🎯 Counter Question'}
+                   (!wsMode && currentQIndex === 0 && (interview?.role?.toLowerCase().includes('analyst') || interview?.company_domain?.toLowerCase().includes('tcs'))) ? '🏢 TCS Question Bank' :
+                   (!wsMode && currentQIndex === 0) ? '📄 Opening Question' : '🎯 Counter Question'}
                 </span>
 
                 {/* Topic badge */}

@@ -57,7 +57,34 @@ FALLBACK_QUESTIONS = {
             "What is infrastructure as code and how does Terraform implement it?",
             "Explain blue-green deployment and canary releases.",
         ],
+        "Data Analyst": [
+            "Can you describe your basic computer skills and analytical toolkit with MS Excel, SQL, and Python or Power BI?",
+            "What is the difference between Aggregate and Scalar functions in SQL? Give practical examples.",
+            "Explain Row-Level Security (RLS) in Power BI and how you implement Dynamic RLS with USERPRINCIPALNAME().",
+            "What is the difference between a Purchase Requisition (PR) and a Purchase Order (PO) in enterprise business systems?",
+            "How do you handle missing values, duplicates, and outliers using IQR in Python Pandas or Excel?",
+            "Write a SQL query to find the 2nd highest salary from an Employee table without using LIMIT or TOP.",
+            "What is the difference between Power BI and Tableau: advantages and limitations of both?",
+            "What are the primary roles and responsibilities of a Data Analyst at TCS?",
+            "What is SAP MM and what are its main functions in procurement and inventory control?",
+            "Explain SQL Joins (INNER, LEFT, RIGHT, FULL OUTER) and explain what 3-way matching is.",
+        ],
     },
+    "TCS Data Analyst": [
+        "Can you describe your basic computer skills and analytical toolkit with MS Excel, SQL, and Python for enterprise reporting?",
+        "What is SAP MM and what are its main functions in enterprise procurement and inventory management?",
+        "What is the difference between a Purchase Requisition (PR) and a Purchase Order (PO) in enterprise business systems?",
+        "What is the difference between a Purchase Order (PO) and a Goods Receipt (GR), and how does 3-way matching operate?",
+        "What is data and what are its main classifications: Structured, Semi-structured, and Unstructured?",
+        "What are the key roles & responsibilities of a Data Analyst at TCS when delivering solutions to enterprise clients?",
+        "Explain the functions in SQL (Aggregate vs Scalar) and write an example combining both in a single query.",
+        "What is the difference between Power BI and Tableau: what are the key advantages and limitations of both?",
+        "What is Row-Level Security (RLS) in Power BI and how do you implement Dynamic RLS using USERPRINCIPALNAME()?",
+        "Explain SQL Constraints (Primary Key, Foreign Key, Unique) and types of Joins (Inner, Left, Right, Full Outer).",
+        "Write a SQL query to find the 2nd highest salary from an Employee table without using LIMIT or TOP.",
+        "How do you perform data cleaning and validation in Python using Pandas (handling missing values, deduplication, IQR outliers)?",
+        "Why do you want to join TCS as a Data Analyst?",
+    ],
     "TCS": [
         "What is the difference between Call by Value and Call by Reference in C/C++ and Java?",
         "Explain the concept of Method Overloading vs Method Overriding with a pseudocode example.",
@@ -214,9 +241,15 @@ def _get_fallback_questions(
     questions: List[str] = []
 
     domain_str = (company_domain or "").lower()
+    role_lower = (role or "").lower()
+    is_data_analyst = "analyst" in role_lower or "data" in role_lower or "analytics" in role_lower or "bi" in role_lower
 
-    if "tcs" in domain_str:
+    if "tcs" in domain_str and is_data_analyst:
+        questions = list(FALLBACK_QUESTIONS["TCS Data Analyst"])
+    elif "tcs" in domain_str:
         questions = list(FALLBACK_QUESTIONS["TCS"])
+    elif is_data_analyst:
+        questions = list(FALLBACK_QUESTIONS["Technical"]["Data Analyst"])
     elif "wipro" in domain_str:
         questions = list(FALLBACK_QUESTIONS["Wipro"])
     elif "infosys" in domain_str:

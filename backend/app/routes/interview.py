@@ -53,13 +53,14 @@ async def create_interview(
             interview_type=payload.interview_type,
             resume_context=resume_context,
             company_domain=company_domain,
+            focus_question=payload.focus_question,
         )
         first_q_text = opening_res["question"]
         current_topic = opening_res["current_topic"]
     except Exception as e:
         logger.error(f"Error generating dynamic opening question: {e}")
-        first_q_text = f"Can you walk me through the most significant technical project you have built for {payload.role}?"
-        current_topic = "Project Architecture"
+        first_q_text = payload.focus_question or f"Can you describe your analytical toolkit and foundational skills for {payload.role}?"
+        current_topic = "Technical Assessment"
         
     db_questions = [{
         "id": 1,

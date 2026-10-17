@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Play, 
   FileWarning, 
@@ -56,7 +56,8 @@ import {
   HRIcon,
   CloudIcon,
   SystemDesignIcon,
-  NetworksIcon
+  NetworksIcon,
+  DataAnalystIcon
 } from '../components/CompanyDomainIcons';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
@@ -81,9 +82,21 @@ import {
 
 const QUICK_TRACKS = [
   {
+    id: 'tcs-da',
+    type: 'Technical',
+    company_domain: 'TCS NQT / Digital',
+    defaultRole: 'Data Analyst',
+    title: 'TCS Data Analyst Track',
+    desc: 'SQL Joins & Window Functions, Excel, Power BI / Tableau, SAP MM & Data Cleaning',
+    icon: BarChart2,
+    badge: 'TCS Special',
+    accent: 'border-blue-200 hover:border-blue-500 text-blue-600 bg-gradient-to-br from-blue-50/70 to-white'
+  },
+  {
     id: 'tcs',
     type: 'Technical',
     company_domain: 'TCS NQT / Digital',
+    defaultRole: 'Software Engineer',
     title: 'TCS NQT / Digital Track',
     desc: 'Core CS, Pseudocode, Memory Stack/Heap, DBMS, OOPs & HR round prep',
     icon: Code2,
@@ -374,6 +387,24 @@ const ALL_COMPANIES = [
 
 const DOMAINS = [
   {
+    id: 'data-analyst',
+    name: 'Data Analyst',
+    subtitle: 'SQL, Excel & BI',
+    count: '350+ Q&A',
+    Icon: DataAnalystIcon,
+    domain: 'TCS NQT / Digital',
+    defaultRole: 'Data Analyst',
+    interviewType: 'Technical',
+    gradient: 'from-blue-500/[0.09] via-indigo-500/[0.04] to-emerald-500/[0.08]',
+    hoverGradient: 'group-hover:from-blue-500/[0.15] group-hover:to-emerald-500/[0.15]',
+    border: 'border-blue-200/80 hover:border-blue-400',
+    topBar: 'from-blue-500 via-indigo-400 to-emerald-500',
+    glow: 'hover:shadow-blue-500/15',
+    badgeBg: 'bg-blue-100 text-blue-700 border-blue-200/70',
+    iconBorder: 'border-blue-100',
+    btnGradient: 'from-blue-600 to-emerald-600'
+  },
+  {
     id: 'python',
     name: 'Python',
     subtitle: 'Core & Scripts',
@@ -596,6 +627,7 @@ const ALL_DOMAINS = [
 ];
 
 const QUICK_PRESETS = [
+  { label: '📊 TCS Data Analyst', role: 'Data Analyst', level: 'Entry', type: 'Technical', domain: 'TCS NQT / Digital' },
   { label: '🏢 TCS (NQT/Digital)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'TCS NQT / Digital' },
   { label: '🌈 Wipro (Elite/Turbo)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Wipro Elite & Turbo' },
   { label: '🔷 Infosys (DSE)', role: 'Software Engineer', level: 'Entry', type: 'Technical', domain: 'Infosys DSE / Specialist' },
@@ -623,6 +655,7 @@ const Dashboard = () => {
   const [experienceLevel, setExperienceLevel] = useState('Entry');
   const [interviewType, setInterviewType] = useState('Technical');
   const [companyDomain, setCompanyDomain] = useState('');
+  const [focusQuestion, setFocusQuestion] = useState('');
   const [creatingSession, setCreatingSession] = useState(false);
 
   // Explorer Modals State
@@ -632,6 +665,27 @@ const Dashboard = () => {
   const [domainSearch, setDomainSearch] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Listen for navigation state from QuestionBank or elsewhere
+  useEffect(() => {
+    if (location.state) {
+      const { focusQuestion: fq, role: targetRole, companyDomain: targetDomain, autoSelectDomain } = location.state;
+      if (fq) setFocusQuestion(fq);
+      if (targetRole) {
+        setRole(targetRole);
+      } else if (autoSelectDomain && autoSelectDomain.toLowerCase().includes('data analyst')) {
+        setRole('Data Analyst');
+      }
+      
+      if (targetDomain) {
+        setCompanyDomain(targetDomain);
+      } else if (autoSelectDomain && autoSelectDomain.toLowerCase().includes('tcs')) {
+        setCompanyDomain('TCS NQT / Digital');
+      }
+      setIsModalOpen(true);
+    }
+  }, [location.state]);
 
   const handleLaunchCompany = (comp) => {
     setRole(comp.defaultRole || 'Software Engineer');
@@ -764,7 +818,8 @@ const Dashboard = () => {
         role: selectedRole,
         experience_level: experienceLevel,
         interview_type: interviewType,
-        company_domain: companyDomain || undefined
+        company_domain: companyDomain || undefined,
+        focus_question: focusQuestion || undefined,
       });
       toast.success("Practice room configured. Entering session...", "Session Initialized");
       navigate(`/interview/${res.data.id}`);
@@ -783,9 +838,12 @@ const Dashboard = () => {
     setCompanyDomain(preset.domain || '');
   };
 
-  const handleQuickLaunch = (type, domain = '') => {
+  const handleQuickLaunch = (type, domain = '', defaultRole = '') => {
     setInterviewType(type);
     setCompanyDomain(domain);
+    if (defaultRole) {
+      setRole(defaultRole);
+    }
     setIsModalOpen(true);
   };
 
@@ -923,7 +981,7 @@ const Dashboard = () => {
                         if (isResumeDisabled) {
                           navigate('/resume');
                         } else {
-                          handleQuickLaunch(track.type, track.company_domain);
+                          handleQuickLaunch(track.type, track.company_domain, track.defaultRole);
                         }
                       }}
                       className={`p-4 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col justify-between hover:shadow-md hover:-translate-y-1 group bg-white/95 ${track.accent}`}
@@ -1370,6 +1428,27 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Focus Question Banner if launching from Question Bank */}
+          {focusQuestion && (
+            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-900 text-xs flex items-start justify-between gap-2 animate-fadeIn">
+              <div className="flex items-start gap-2">
+                <Target size={15} className="text-purple-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-purple-700 block text-[10px] uppercase tracking-wider">🎯 Starting with Selected Question:</span>
+                  <p className="font-medium text-purple-950 mt-0.5 italic line-clamp-2">"{focusQuestion}"</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setFocusQuestion('')}
+                className="text-gray-400 hover:text-gray-600 p-0.5 rounded transition-colors"
+                title="Clear question to use dynamic opener"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="border-t border-cream-border/60 pt-3 flex flex-col gap-3.5">
             {/* Target Role selection */}
             <div className="flex flex-col gap-1">
@@ -1377,8 +1456,9 @@ const Dashboard = () => {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs bg-white font-medium text-midnight"
               >
+                <option value="Data Analyst">Data Analyst (SQL, Excel, BI, Analytics)</option>
                 <option value="Software Engineer">Software Engineer (General)</option>
                 <option value="React Developer">React / Frontend Developer</option>
                 <option value="Python Developer">Python / Backend Developer</option>
@@ -1443,6 +1523,7 @@ const Dashboard = () => {
                   <option value="Cognizant GenC & GenC Next">Cognizant (GenC & GenC Next Technical)</option>
                 </optgroup>
                 <optgroup label="🗄️ Practice by Domain">
+                  <option value="TCS NQT / Digital">Data Analyst (TCS Curriculum: SQL, Excel, BI)</option>
                   <option value="Python">Python Core & Frameworks</option>
                   <option value="Java">Java & JVM Architecture</option>
                   <option value="DSA">Data Structures & Algorithms (DSA)</option>

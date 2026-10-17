@@ -7,6 +7,7 @@ class InterviewCreate(BaseModel):
     experience_level: str = Field(..., example="Mid")  # Entry, Mid, Senior
     interview_type: str = Field(..., example="Technical")  # Technical, HR, Behavioral, Resume-Based, Mixed
     company_domain: Optional[str] = Field(None, example="TCS NQT / Digital")
+    focus_question: Optional[str] = Field(None, example="Can you describe your basic computer skills and analytical toolkit?")
 
 class QuestionOut(BaseModel):
     id: int
