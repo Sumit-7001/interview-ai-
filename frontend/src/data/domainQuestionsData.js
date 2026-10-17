@@ -77,15 +77,16 @@ export const DOMAINS = [
 ];
 
 export const COMPANIES = [
-  { id: 'tcs', name: 'TCS', sets: '18 Question Sets', count: 125, logoType: 'tcs', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: '300+ TCS Data Analyst Interview Questions & Answers 2026' },
-  { id: 'wipro', name: 'Wipro', sets: '15 Question Sets', count: 98, logoType: 'wipro', pdfUrl: '/pdfs/wipro.pdf', pdfTitle: '20+ Wipro Data Analyst Interview Questions for Freshers 2026' },
-  { id: 'cognizant', name: 'Cognizant', sets: '12 Question Sets', count: 85, logoType: 'cognizant', pdfUrl: '/pdfs/cognizant.pdf', pdfTitle: '100+ Cognizant Data Analyst Interview Questions & Answers 2026' },
-  { id: 'capgemini', name: 'Capgemini', sets: '14 Question Sets', count: 92, logoType: 'capgemini', pdfUrl: '/pdfs/capgemini.pdf', pdfTitle: '10+ Capgemini Associate Data Analyst Interview Questions & Answers 2026' },
-  { id: 'infosys', name: 'Infosys', sets: '12 Question Sets', count: 88, logoType: 'infosys', pdfUrl: '/pdfs/infosys.pdf', pdfTitle: '8 Infosys Data Analyst Interview Questions for Freshers 2026' },
-  { id: 'accenture', name: 'Accenture', sets: '13 Question Sets', count: 90, logoType: 'accenture', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: '200+ Accenture Data Analyst Interview Questions & Answers 2026' },
-  { id: 'amazon', name: 'Amazon', sets: '10 Question Sets', count: 75, logoType: 'amazon' },
-  { id: 'tech-mahindra', name: 'Tech Mahindra', sets: '8 Question Sets', count: 62, logoType: 'tech-mahindra' },
+  { id: 'tcs', name: 'TCS', sets: '18 Question Sets', count: 125, logoType: 'tcs', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: '300+ TCS Technical & Placement Interview Questions & Answers 2026' },
+  { id: 'wipro', name: 'Wipro', sets: '15 Question Sets', count: 98, logoType: 'wipro', pdfUrl: '/pdfs/wipro.pdf', pdfTitle: 'Wipro Elite & Turbo Technical Interview Questions 2026' },
+  { id: 'cognizant', name: 'Cognizant', sets: '12 Question Sets', count: 85, logoType: 'cognizant', pdfUrl: '/pdfs/cognizant.pdf', pdfTitle: '100+ Cognizant GenC & Technical Interview Questions 2026' },
+  { id: 'capgemini', name: 'Capgemini', sets: '14 Question Sets', count: 92, logoType: 'capgemini', pdfUrl: '/pdfs/capgemini.pdf', pdfTitle: 'Capgemini Technical & Pseudocode Interview Guide 2026' },
+  { id: 'infosys', name: 'Infosys', sets: '12 Question Sets', count: 88, logoType: 'infosys', pdfUrl: '/pdfs/infosys.pdf', pdfTitle: 'Infosys DSE & Specialist Technical Interview Guide 2026' },
+  { id: 'accenture', name: 'Accenture', sets: '13 Question Sets', count: 90, logoType: 'accenture', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: '200+ Accenture Cognitive & Technical Interview Questions 2026' },
+  { id: 'amazon', name: 'Amazon', sets: '10 Question Sets', count: 75, logoType: 'amazon', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: 'Amazon & Top Tech Technical Interview Guide 2026' },
+  { id: 'tech-mahindra', name: 'Tech Mahindra', sets: '8 Question Sets', count: 62, logoType: 'tech-mahindra', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: 'Tech Mahindra Enterprise Technical Interview Guide 2026' },
 ];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. TCS AUTHENTIC QUESTIONS (FROM AMBITIONBOX PDF)
@@ -1328,4 +1329,24 @@ export const ALL_DATA_ANALYST_QUESTIONS = {
 // 68 questions for Image 1 (Domain overview view)
 export const DATA_ANALYST_68_QUESTIONS = buildCompanyDataset(TCS_PDF_QUESTIONS, 'da-overview', 68);
 
+// Re-export Software Engineer (General), Full Stack, and Frontend datasets
+export { 
+  SWE_GENERAL_QUESTIONS, 
+  ALL_SWE_GENERAL_QUESTIONS,
+  SWE_GENERAL_SEEDS
+} from './sweQuestionsData';
+
+export { 
+  FULL_STACK_QUESTIONS, 
+  ALL_FULL_STACK_QUESTIONS,
+  FULL_STACK_SEEDS
+} from './fullStackQuestionsData';
+
+export { 
+  FRONTEND_DEVELOPER_QUESTIONS, 
+  ALL_FRONTEND_QUESTIONS,
+  FRONTEND_SEEDS
+} from './frontendQuestionsData';
+
 export default ALL_DATA_ANALYST_QUESTIONS;
+
