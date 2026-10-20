@@ -83,8 +83,8 @@ export const DATA_ANALYST_COMPANIES = [
   { id: 'capgemini', name: 'Capgemini', sets: '14 Question Sets', count: 92, logoType: 'capgemini', pdfUrl: '/pdfs/capgemini.pdf', pdfTitle: 'Capgemini Technical & Pseudocode Interview Guide 2026' },
   { id: 'infosys', name: 'Infosys', sets: '12 Question Sets', count: 88, logoType: 'infosys', pdfUrl: '/pdfs/infosys.pdf', pdfTitle: 'Infosys DSE & Specialist Technical Interview Guide 2026' },
   { id: 'accenture', name: 'Accenture', sets: '13 Question Sets', count: 90, logoType: 'accenture', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: '200+ Accenture Cognitive & Technical Interview Questions 2026' },
-  { id: 'amazon', name: 'Amazon', sets: '10 Question Sets', count: 75, logoType: 'amazon', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: 'Amazon & Top Tech Technical Interview Guide 2026' },
-  { id: 'tech-mahindra', name: 'Tech Mahindra', sets: '8 Question Sets', count: 62, logoType: 'tech-mahindra', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: 'Tech Mahindra Enterprise Technical Interview Guide 2026' },
+  { id: 'amazon', name: 'Amazon', sets: '10 Question Sets', count: 75, logoType: 'amazon', pdfUrl: '/pdfs/amazon.pdf', pdfTitle: 'Amazon Data Analyst Interview Questions 2026: SQL, Cases & Solutions' },
+  { id: 'tech-mahindra', name: 'Tech Mahindra', sets: '8 Question Sets', count: 62, logoType: 'tech-mahindra', pdfUrl: '/pdfs/tech-mahindra.pdf', pdfTitle: '60+ Tech Mahindra Data Analyst Interview Questions & Answers 2026' },
 ];
 
 export const DEV_COMPANIES = [
@@ -157,24 +157,24 @@ export const DEV_COMPANIES = [
   { 
     id: 'amazon', 
     name: 'Amazon', 
-    sets: 'PDF Coming Soon', 
-    pageCount: 0, 
+    sets: '10 Pages', 
+    pageCount: 10, 
     logoType: 'amazon', 
-    pdfUrl: null, 
-    fileName: null, 
-    pdfTitle: 'Amazon Interview Questions', 
-    hasPdf: false 
+    pdfUrl: '/pdfs/amazon.pdf', 
+    fileName: 'Amazon Data Analyst Interview Questions 2026.pdf', 
+    pdfTitle: 'Amazon Data Analyst Interview Questions 2026', 
+    hasPdf: true 
   },
   { 
     id: 'tech-mahindra', 
     name: 'Tech Mahindra', 
-    sets: 'PDF Coming Soon', 
-    pageCount: 0, 
+    sets: '12 Pages', 
+    pageCount: 12, 
     logoType: 'tech-mahindra', 
-    pdfUrl: null, 
-    fileName: null, 
-    pdfTitle: 'Tech Mahindra Interview Questions', 
-    hasPdf: false 
+    pdfUrl: '/pdfs/tech-mahindra.pdf', 
+    fileName: 'Tech Mahindra Data Analyst Interview Questions 2026.pdf', 
+    pdfTitle: '60+ Tech Mahindra Data Analyst Interview Questions 2026', 
+    hasPdf: true 
   },
 ];
 
@@ -1379,6 +1379,323 @@ df_clean = df[(df['spend'] >= q1 - 1.5*iqr) & (df['spend'] <= q3 + 1.5*iqr)]`,
   }
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. AMAZON AUTHENTIC DATA ANALYST QUESTIONS (FROM TOPFOLIO AMAZON GUIDE PDF)
+// ─────────────────────────────────────────────────────────────────────────────
+export const AMAZON_PDF_QUESTIONS = [
+  {
+    id: 'amz-01',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'How do you perform an 80/20 Pareto revenue contribution analysis in SQL to identify top sellers generating the first 80% of Gross Merchandise Value (GMV)?',
+    category: 'SQL & DBMS',
+    difficulty: 'Hard',
+    summary: 'Use window functions SUM(total_gmv) OVER () to compute total platform GMV and SUM(total_gmv) OVER (ORDER BY total_gmv DESC) to compute descending running total, filtering sellers prior to exceeding the 80% threshold.',
+    answer: `Step-by-step optimal PostgreSQL solution for Amazon Marketplace Analytics:
+1. **Compute Platform Grand Total:** \`SUM(total_gmv) OVER ()\` calculates total GMV in a single scan without an expensive subquery.
+2. **Compute Descending Running Total:** \`SUM(total_gmv) OVER (ORDER BY total_gmv DESC)\` calculates cumulative GMV.
+3. **Filter 80% Boundary:** Compare the previous cumulative sum \`(running_gmv - total_gmv) / total_platform_gmv < 0.80\` to isolate the vital few sellers generating the bulk of marketplace value.`,
+    code_example: {
+      language: 'sql',
+      code: `WITH running_totals AS (
+  SELECT
+    seller_id,
+    total_gmv,
+    SUM(total_gmv) OVER (ORDER BY total_gmv DESC) AS running_gmv,
+    SUM(total_gmv) OVER () AS total_platform_gmv
+  FROM sellers
+)
+SELECT
+  seller_id,
+  total_gmv,
+  ROUND((running_gmv / total_platform_gmv) * 100, 2) AS cumulative_pct
+FROM running_totals
+WHERE (running_gmv - total_gmv) / total_platform_gmv < 0.80
+ORDER BY total_gmv DESC;`
+    },
+    interviewer_tip: "Amazon BIE interviewers specifically evaluate whether you use window functions over correlated subqueries. Window functions execute in O(N log N) vs O(N^2) for self-joins on billion-row retail tables.",
+    common_mistakes: "Using correlated subqueries or failing to handle ties in ORDER BY, causing quadratic execution slowdown on large datasets.",
+    follow_ups: ["How would you adapt this query to segment revenue contribution across individual product categories?", "What index would optimize the sellers table for this query?"]
+  },
+  {
+    id: 'amz-02',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'How do you segment Amazon Prime customers into 4 equal quartiles based on annual spend using NTILE to tailor promotional discount tiers?',
+    category: 'SQL & DBMS',
+    difficulty: 'Medium',
+    summary: 'Use NTILE(4) OVER (ORDER BY annual_spend DESC) to partition the ordered customer dataset into four equal frequency buckets, assigning tiers from Platinum to Bronze.',
+    answer: `Optimal PostgreSQL spend quartile tiering query:
+- **NTILE(4):** Partitions ordered customer records into four equal buckets (Top 25%, 25-50%, 50-75%, Bottom 25%).
+- **Case Mapping:** Maps bucket ranks (1 to 4) into actionable marketing tiers (Platinum, Gold, Silver, Bronze).`,
+    code_example: {
+      language: 'sql',
+      code: `SELECT
+  customer_id,
+  annual_spend,
+  NTILE(4) OVER (ORDER BY annual_spend DESC) AS spend_quartile,
+  CASE NTILE(4) OVER (ORDER BY annual_spend DESC)
+    WHEN 1 THEN 'Platinum (Top 25%)'
+    WHEN 2 THEN 'Gold (25–50%)'
+    WHEN 3 THEN 'Silver (50–75%)'
+    WHEN 4 THEN 'Bronze (Bottom 25%)'
+  END AS tier_label
+FROM customer_orders;`
+    },
+    interviewer_tip: "Be prepared to explain the exact difference between NTILE, CUME_DIST, and PERCENT_RANK.",
+    common_mistakes: "Assuming NTILE splits by dollar amount rather than row count. NTILE guarantees equal row distribution across buckets.",
+    follow_ups: ["What happens when the total number of customers is not evenly divisible by 4?", "How does WIDTH_BUCKET differ from NTILE in PostgreSQL?"]
+  },
+  {
+    id: 'amz-03',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'What is the primary North Star metric for an Amazon business vertical (e.g. Prime Video), and what are 2 counter-metrics to ensure quality is not sacrificed for growth?',
+    category: 'Business Analytics',
+    difficulty: 'Hard',
+    summary: 'A North Star metric reflects core customer value (e.g. Monthly Active Streaming Hours). Counter-metrics ensure long-term platform health (e.g. 30-Day Churn Rate and Playback Buffering/Failure Ratio).',
+    answer: `Metric ownership framework for Amazon verticals:
+- **North Star Metric:** **Monthly Active Streaming Hours per Subscriber (Prime Video)** or **Customer Repeat Purchase Frequency (Amazon Fresh)**. Measures value delivered rather than vanity signups.
+- **Counter-Metric 1 (Retention Guardrail):** **30-Day Prime Churn Rate & Cancellation Ratio** — prevents aggressive push marketing from driving unsubscribes.
+- **Counter-Metric 2 (Quality of Experience):** **Playback Error Rate & Re-buffering Ratio (<0.5%)** — ensures streaming growth is not accompanied by degraded video performance.`,
+    code_example: {
+      language: 'text',
+      code: `North Star: Monthly Active Streaming Hours per Active Subscriber\nCounter-Metric 1: 30-Day Prime Churn & Cancellation Ratio (<1.2%)\nCounter-Metric 2: Video Playback Error & Buffering Ratio (<0.5%)`
+    },
+    interviewer_tip: "Amazon values metric ownership. Always mention 'counter-metrics' or 'guardrail metrics' to prove you understand business tradeoffs.",
+    common_mistakes: "Choosing purely financial vanity metrics (like total gross revenue) without measuring actual customer utility or satisfaction.",
+    follow_ups: ["How would you detect if a feature increased short-term conversion while harming 90-day retention?"]
+  },
+  {
+    id: 'amz-04',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'E-commerce checkout conversion dropped by 8% week-over-week in a major metropolitan region. How would you systematically structure your root-cause investigation?',
+    category: 'Case Studies',
+    difficulty: 'Hard',
+    summary: 'Structure investigation across 4 layers: 1) Data integrity & logging validation, 2) Funnel step breakdown, 3) Dimensional cohort slicing (device, payment method, ISP), and 4) External anomaly identification.',
+    answer: `Structured Amazon Root-Cause Diagnostic framework:
+1. **Data Integrity & Instrumentation Check:** Verify telemetry tracking pipelines, event logging drops, and database ingestion latency before concluding a true user drop.
+2. **Funnel Decomposition:** Analyze step-by-step conversion: Product Page -> Add to Cart -> Address Verification -> Payment Gateway -> Order Confirmation to identify the exact leaky funnel step.
+3. **Dimensional Slicing:** Break down by Payment Method (UPI, Net Banking, Credit Card failures), Client Platform (iOS vs Android app build vs Mobile Web), and ISP network latency.
+4. **External vs Internal Factors:** Audit recent frontend deployments, payment gateway downtime, local holidays, or aggressive competitor sales.`,
+    code_example: {
+      language: 'text',
+      code: `Diagnostic Matrix:\nStep 1: Check instrumentation & pipeline health\nStep 2: Isolate leaky funnel stage (Cart -> Checkout -> Payment -> Success)\nStep 3: Segment by Dimension (OS Version, Payment Gateway, Network Latency)\nStep 4: Audit recent deployments & external dependencies`
+    },
+    interviewer_tip: "Start by verifying the data itself. Seasoned Amazon analysts always confirm tracking accuracy before assuming customer behavior changed.",
+    common_mistakes: "Jumping immediately to behavioral conclusions without ruling out technical issues (e.g., payment gateway API outages or broken app updates).",
+    follow_ups: ["If payment failures jumped specifically on Android 14 with UPI, what would your immediate mitigation action be?"]
+  },
+  {
+    id: 'amz-05',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'How do you design an A/B experiment at Amazon scale to test a new recommendation algorithm without cannibalizing organic merchant search?',
+    category: 'Statistics',
+    difficulty: 'Hard',
+    summary: 'Define primary metric (Incremental Units Ordered), guardrail metric (Search Query CTR), calculate minimum detectable effect (MDE) and sample size, randomize at user or market level, and run paired t-tests.',
+    answer: `End-to-end experiment design framework:
+1. **Hypothesis Formulation:** The new personalization engine increases Incremental Units Ordered per Session by >= 2.5% without reducing Organic Search CTR by more than 0.2%.
+2. **Randomization Unit:** User-level or market-level cluster randomization to prevent cross-treatment spillover.
+3. **Sample Size & Power Calculation:** Set statistical power (1 - beta) = 80% and significance level alpha = 0.05 based on baseline variance.
+4. **Guardrail Metric Monitoring:** Track Organic Search Result Click-Through Rate and Merchant Return Rate to detect cannibalization.`,
+    code_example: {
+      language: 'text',
+      code: `Experiment Parameters:\nPrimary Metric: Incremental Units Ordered per User Session (Target: +2.5%)\nGuardrail Metric: Organic Merchant Search CTR (Tolerance: > -0.2%)\nSignificance Level: alpha = 0.05, Power: 1 - beta = 0.80\nMinimum Run Duration: 2 full purchase cycles (14 days)`
+    },
+    interviewer_tip: "Discuss cannibalization vs incrementality. In retail, an algorithm that shifts sales from organic search to recommended carousels without expanding total cart size adds zero true net value.",
+    common_mistakes: "Stopping experiments early when p-values cross 0.05 (peeking problem), which drastically inflates False Positive rates.",
+    follow_ups: ["How do you handle network interference or marketplace spillover in cluster A/B tests?"]
+  },
+  {
+    id: 'amz-06',
+    company: 'amazon',
+    domain: 'data-analyst',
+    question: 'Behavioral / Leadership Principle: Describe a situation where you applied "Dive Deep" and "Customer Obsession" to uncover a counter-intuitive data insight.',
+    category: 'HR',
+    difficulty: 'Medium',
+    summary: 'Structure using the STAR method: explain the ambiguous scenario, the deep investigative analytical steps you took, the unexpected insight uncovered, and the measurable business outcome.',
+    answer: `Structured STAR response for Amazon Bar Raiser:
+- **Situation:** "While auditing subscriber drop-offs on our e-commerce platform, aggregate dashboards indicated a 5% overall churn rate that executive leadership viewed as acceptable industry standard."
+- **Task:** "I suspected aggregate statistics masked severe localized friction, so I initiated a granular diagnostic of user journey drop-offs across first-time vs returning buyers."
+- **Action:** "I dug into transaction logs and found that first-time buyers on mobile web experienced a 34% drop-off specifically on address auto-complete. I partnered with mobile engineering to simplify the zip code validation pipeline and reduce mandatory form fields from 7 to 3."
+- **Result:** "Checkout completion among new mobile customers increased by 19% within 3 weeks, directly contributing $1.4M in annualized incremental revenue."`,
+    code_example: {
+      language: 'text',
+      code: `STAR Framework:\nSituation: Aggregate 5% churn looked normal on executive dashboards\nTask: Granular cohort breakdown of user journeys\nAction: Discovered 34% address auto-complete drop-off; simplified form to 3 fields\nResult: +19% mobile completion, $1.4M annualized incremental impact`
+    },
+    interviewer_tip: "Quantify your results with exact numbers (percentages, dollar impact, latency reductions). Amazon interviewers expect concrete data.",
+    common_mistakes: "Speaking in generalities or using 'we did' instead of clearly identifying your personal contribution ('I analyzed', 'I recommended').",
+    follow_ups: ["How did you handle skepticism from engineering when you presented your findings?"]
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. TECH MAHINDRA AUTHENTIC DATA ANALYST QUESTIONS (FROM AMBITIONBOX PDF)
+// ─────────────────────────────────────────────────────────────────────────────
+export const TECH_MAHINDRA_PDF_QUESTIONS = [
+  {
+    id: 'tm-01',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'What is the difference between a LEFT JOIN and an INNER JOIN in SQL? Provide syntax and real-world examples.',
+    category: 'SQL & DBMS',
+    difficulty: 'Easy',
+    summary: 'INNER JOIN returns only matching rows where the join condition is met in both tables. LEFT JOIN returns all rows from the left table and matched rows from the right table (unmatched columns are populated with NULL).',
+    answer: `Key differences between INNER JOIN and LEFT JOIN:
+- **INNER JOIN:**
+  - Evaluates both tables and returns only rows that satisfy the join condition in both datasets.
+  - Useful when only related records with complete foreign key links are required.
+- **LEFT JOIN (LEFT OUTER JOIN):**
+  - Returns **all** records from the left table regardless of whether there is a match in the right table.
+  - If no match exists, columns from the right table return as \`NULL\`.
+  - Useful for finding unmatched records, orphans, or maintaining comprehensive base reports.`,
+    code_example: {
+      language: 'sql',
+      code: `-- INNER JOIN: Returns only employees assigned to an existing department:\nSELECT e.emp_id, e.emp_name, d.dept_name\nFROM employees e\nINNER JOIN departments d ON e.dept_id = d.dept_id;\n\n-- LEFT JOIN: Returns ALL employees, even if department is unassigned (dept_name is NULL):\nSELECT e.emp_id, e.emp_name, d.dept_name\nFROM employees e\nLEFT JOIN departments d ON e.dept_id = d.dept_id;\n\n-- Finding employees without a department:\nSELECT e.emp_id, e.emp_name\nFROM employees e\nLEFT JOIN departments d ON e.dept_id = d.dept_id\nWHERE d.dept_id IS NULL;`
+    },
+    interviewer_tip: "Tech Mahindra interviewers frequently ask how to find records in Table A that do not exist in Table B using a LEFT JOIN and WHERE right_table.id IS NULL.",
+    common_mistakes: "Putting conditions on the right table in the WHERE clause of a LEFT JOIN, which unintentionally converts it into an INNER JOIN.",
+    follow_ups: ["What is the difference between LEFT JOIN and FULL OUTER JOIN?", "How does SQL handle NULL values during joins?"]
+  },
+  {
+    id: 'tm-02',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'Which Python libraries are most commonly used for data analysis at Tech Mahindra and what are their respective roles?',
+    category: 'Python & Pandas',
+    difficulty: 'Easy',
+    summary: 'Pandas for tabular data cleaning and ETL; NumPy for array computing and vectorization; Matplotlib & Seaborn for visualization; SciPy for statistical tests; scikit-learn for predictive modeling.',
+    answer: `Core Python analytical stack at Tech Mahindra:
+1. **Pandas:** Primary tool for tabular data manipulation, ETL pipelines, \`groupby\`, \`merge\`, \`pivot_table\`, and handling dirty missing records.
+2. **NumPy:** High-performance numerical computing library with multi-dimensional arrays, linear algebra routines, and vectorized calculations.
+3. **Matplotlib & Seaborn:** Visualization engines for creating statistical plots, histograms, correlation heatmaps, and executive charts.
+4. **SciPy:** Advanced scientific computing library used for hypothesis testing, t-tests, and signal processing.
+5. **scikit-learn:** Industry standard for classical machine learning, feature engineering, scaling, and cross-validation.`,
+    code_example: {
+      language: 'python',
+      code: `import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\nimport seaborn as sns\n\n# 1. Load and inspect\ndf = pd.read_csv('telecom_churn.csv')\nprint(df.info())\nprint(df.describe())\n\n# 2. Groupby analysis and vectorization\nchurn_summary = df.groupby('contract_type')['monthly_charges'].agg(['mean', 'count'])\nprint(churn_summary)\n\n# 3. Log-transform skewed charges\ndf['log_charges'] = np.log1p(df['monthly_charges'])`
+    },
+    interviewer_tip: "Explain how vectorization in NumPy and Pandas avoids slow Python for loops by utilizing C-level contiguous memory operations.",
+    common_mistakes: "Iterating through DataFrames using for index, row in df.iterrows() instead of vectorized functions or .apply().",
+    follow_ups: ["When should you use Pandas vs PySpark for large datasets exceeding RAM limits?"]
+  },
+  {
+    id: 'tm-03',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'Explain the difference between DDL (Data Definition Language) and DML (Data Manipulation Language) in SQL with examples.',
+    category: 'SQL & DBMS',
+    difficulty: 'Easy',
+    summary: 'DDL (CREATE, ALTER, DROP, TRUNCATE, RENAME) modifies database structure and schema metadata without manipulating row data. DML (SELECT, INSERT, UPDATE, DELETE) operates on table data rows.',
+    answer: `Comparison between DDL and DML:
+- **DDL (Data Definition Language):**
+  - Defines, alters, and manages the database structure and schema objects.
+  - Commands: \`CREATE\`, \`ALTER\`, \`DROP\`, \`TRUNCATE\`, \`RENAME\`.
+  - Operations are auto-committed in most relational DBMS (cannot be rolled back easily in MySQL).
+  - Operates on metadata rather than individual data values.
+- **DML (Data Manipulation Language):**
+  - Manages and queries row-level data within established database tables.
+  - Commands: \`SELECT\`, \`INSERT\`, \`UPDATE\`, \`DELETE\`.
+  - Can be rolled back within transactions using \`COMMIT\` and \`ROLLBACK\` (TCL).`,
+    code_example: {
+      language: 'sql',
+      code: `-- DDL: Modifies structure\nCREATE TABLE client_accounts (\n  account_id INT PRIMARY KEY,\n  client_name VARCHAR(100),\n  balance DECIMAL(12, 2)\n);\nALTER TABLE client_accounts ADD COLUMN status VARCHAR(20) DEFAULT 'Active';\n\n-- DML: Modifies rows\nINSERT INTO client_accounts (account_id, client_name, balance) \nVALUES (101, 'Telecom Corp', 85000.00);\n\nUPDATE client_accounts \nSET balance = balance + 15000 \nWHERE account_id = 101;`
+    },
+    interviewer_tip: "Highlight the classic interview distinction between TRUNCATE (DDL: fast, resets identity, cannot filter with WHERE) vs DELETE (DML: logs row by row, supports WHERE).",
+    common_mistakes: "Classifying SELECT as DDL or forgetting that TRUNCATE is a DDL command.",
+    follow_ups: ["What is the difference between DROP TABLE and TRUNCATE TABLE?"]
+  },
+  {
+    id: 'tm-04',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'What is a subquery in SQL and when would you use a subquery instead of a JOIN?',
+    category: 'SQL & DBMS',
+    difficulty: 'Medium',
+    summary: 'A subquery is a query nested inside another SQL statement (in WHERE, FROM, or SELECT). Used for computing dynamic thresholds, aggregations, or checking existence (EXISTS, IN).',
+    answer: `Subqueries vs JOINs in enterprise SQL:
+- **What is a Subquery?** A query embedded within another query, executing either once (non-correlated) or once per candidate row (correlated).
+- **When to Use a Subquery:**
+  1. **Dynamic Thresholds:** When filtering records against an aggregate value that is calculated on the fly (e.g., \`WHERE salary > (SELECT AVG(salary)...)\`).
+  2. **Existence Checks:** Using \`WHERE EXISTS (SELECT 1...)\` which halts execution as soon as the first match is found.
+  3. **Complex CTEs / Derived Tables:** In the \`FROM\` clause when pre-aggregating data before joining.
+- **When to Use a JOIN:** When you need to retrieve columns from multiple tables simultaneously. Joins are generally better optimized by query planners for large multi-table reads.`,
+    code_example: {
+      language: 'sql',
+      code: `-- Subquery in WHERE clause to find employees earning above department average:\nSELECT emp_name, salary, dept_id\nFROM employees e1\nWHERE salary > (\n  SELECT AVG(salary)\n  FROM employees e2\n  WHERE e2.dept_id = e1.dept_id\n);\n\n-- Equivalent using CTE and Window Function (Preferred for performance):\nWITH dept_avg AS (\n  SELECT emp_name, salary, dept_id,\n         AVG(salary) OVER (PARTITION BY dept_id) AS avg_sal\n  FROM employees\n)\nSELECT emp_name, salary, dept_id\nFROM dept_avg\nWHERE salary > avg_sal;`
+    },
+    interviewer_tip: "Explain that modern SQL engines often rewrite non-correlated subqueries into joins internally, but correlated subqueries can cause O(N^2) table scans if not indexed properly.",
+    common_mistakes: "Using a subquery returning multiple values with scalar comparison operators (=, >) instead of IN or ANY.",
+    follow_ups: ["What is the difference between a correlated and a non-correlated subquery?"]
+  },
+  {
+    id: 'tm-05',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'What is database normalization and why is it essential for enterprise data systems at Tech Mahindra?',
+    category: 'SQL & DBMS',
+    difficulty: 'Medium',
+    summary: 'Organizing database tables to reduce data redundancy and eliminate insert, update, and delete anomalies by ensuring tables satisfy 1NF (atomic values), 2NF (no partial dependency), and 3NF (no transitive dependency).',
+    answer: `Database normalization levels and enterprise rationale:
+- **Purpose:** Eliminates duplicate data storage, ensures referential integrity, and prevents insertion, update, and deletion anomalies.
+- **Normal Forms:**
+  - **1NF (First Normal Form):** Every cell holds a single atomic value, and each record is unique (Primary Key defined). No comma-separated lists.
+  - **2NF (Second Normal Form):** Table is in 1NF and all non-key columns are fully dependent on the entire primary key (eliminates partial functional dependencies in composite keys).
+  - **3NF (Third Normal Form):** Table is in 2NF and no non-key attribute depends on another non-key attribute (eliminates transitive dependencies like Zip Code -> City).`,
+    code_example: {
+      language: 'text',
+      code: `Normalization Stages:\nUnnormalized: [OrderID, CustomerName, CustomerCity, ProductList (comma-separated)]\n1NF: Atomic values only. Split multi-valued product lists into separate rows.\n2NF: Move Customer details to Customers table so non-key attributes depend on CustomerID alone.\n3NF: Split City/State into a PostalCode table to eliminate transitive dependencies.`
+    },
+    interviewer_tip: "Mention that while transactional databases (OLTP) favor 3NF/BCNF for data integrity, reporting and analytics databases (OLAP) often use denormalized Star or Snowflake schemas to optimize fast aggregation queries.",
+    common_mistakes: "Claiming normalization improves query read speed; excessive joins in 3NF can actually slow down complex analytical queries.",
+    follow_ups: ["What is BCNF and how does it differ from 3NF?", "What is denormalization and when is it applied in data warehousing?"]
+  },
+  {
+    id: 'tm-06',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'What are the primary roles and responsibilities of a Data Analyst at Tech Mahindra?',
+    category: 'Business Analytics',
+    difficulty: 'Easy',
+    summary: 'Key duties: analyzing telecommunications and enterprise datasets, building interactive Power BI/Tableau dashboards, writing optimized SQL queries, verifying data pipelines, and presenting actionable insights to stakeholders.',
+    answer: `Key responsibilities for Data Analysts at Tech Mahindra:
+1. **Data Extraction & Transformation (ETL):** Write complex SQL queries across enterprise relational databases (Oracle, PostgreSQL, SQL Server) to extract, cleanse, and validate client data.
+2. **Dashboard & Report Development:** Design, maintain, and publish production Power BI / Tableau dashboards tracking business KPIs, operational metrics, and SLA adherence.
+3. **Trend & Predictive Analysis:** Utilize Python (pandas, numpy, statsmodels) to identify revenue leaks, customer churn patterns, and operational bottlenecks.
+4. **Stakeholder Communication:** Translate technical data findings into executive summaries, PowerPoint decks, and business recommendations for global client teams.`,
+    code_example: {
+      language: 'text',
+      code: `Daily Workflow: Enterprise Database -> SQL Extraction & Cleansing -> Python Validation -> Power BI Dashboard -> Client Executive Presentation`
+    },
+    interviewer_tip: "Mention Tech Mahindra's focus on telecom, manufacturing, and BFSI enterprise digital transformation to show company alignment.",
+    common_mistakes: "Focusing solely on coding without emphasizing business domain knowledge and executive presentation skills.",
+    follow_ups: ["Which BI tool (Power BI vs Tableau) do you have the most hands-on experience with?"]
+  },
+  {
+    id: 'tm-07',
+    company: 'tech-mahindra',
+    domain: 'data-analyst',
+    question: 'Behavioral Question: Tell me about a time you handled a difficult conflict between a manager and a team member. How did you resolve it?',
+    category: 'HR',
+    difficulty: 'Medium',
+    summary: 'Apply the STAR technique: listen objectively, depersonalize opinions using data metrics, establish a collaborative consensus, and focus on project milestones.',
+    answer: `Structured STAR behavioral response:
+- **Situation:** "During a client sprint deadline, our project manager and senior ETL developer disagreed on whether to delay a dashboard release to implement complete historical backfilling."
+- **Task:** "As the lead data analyst, I needed to help the team resolve the deadlock without compromising sprint delivery commitments or data reliability."
+- **Action:** "I gathered concrete telemetry showing that 94% of executive dashboard queries queried only the last 90 days of transactions. I proposed a phased rollout: release the dashboard on schedule with 90 days of verified data, while running background batch pipelines to backfill multi-year historical logs over the subsequent weekend."
+- **Result:** "Both the manager and developer accepted the data-driven compromise. We met the client deadline with zero sprint delay and completed the full historical backfill without any production outages."`,
+    code_example: {
+      language: 'text',
+      code: `STAR Method:\nSituation: Deadline clash over dashboard release vs historical backfill\nTask: De-escalate and find compromise without missing client deadline\nAction: Analyzed query logs (94% queried recent 90 days); proposed phased release\nResult: Met deadline on time; completed backfill over weekend with zero downtime`
+    },
+    interviewer_tip: "Frame conflict resolution around objective data and client outcomes rather than personal feelings.",
+    common_mistakes: "Blaming one party or saying you escalated to upper management instead of resolving the problem collaboratively.",
+    follow_ups: ["What strategies do you use to persuade skeptical stakeholders who disagree with your analysis?"]
+  }
+];
+
 // Helper to assemble full company question arrays
 const buildCompanyDataset = (seeds, companyId, totalCount) => {
   const result = [...seeds];
@@ -1415,8 +1732,8 @@ export const ALL_DATA_ANALYST_QUESTIONS = {
   cognizant: buildCompanyDataset(COGNIZANT_PDF_QUESTIONS, 'cognizant', 85),
   infosys: buildCompanyDataset(INFOSYS_PDF_QUESTIONS, 'infosys', 88),
   wipro: buildCompanyDataset(WIPRO_PDF_QUESTIONS, 'wipro', 98),
-  amazon: buildCompanyDataset(ACCENTURE_PDF_QUESTIONS, 'amazon', 75),
-  'tech-mahindra': buildCompanyDataset(TCS_PDF_QUESTIONS, 'tech-mahindra', 62),
+  amazon: buildCompanyDataset(AMAZON_PDF_QUESTIONS, 'amazon', 75),
+  'tech-mahindra': buildCompanyDataset(TECH_MAHINDRA_PDF_QUESTIONS, 'tech-mahindra', 62),
 };
 
 // 68 questions for Image 1 (Domain overview view)
