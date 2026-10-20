@@ -76,7 +76,7 @@ export const DOMAINS = [
   },
 ];
 
-export const COMPANIES = [
+export const DATA_ANALYST_COMPANIES = [
   { id: 'tcs', name: 'TCS', sets: '18 Question Sets', count: 125, logoType: 'tcs', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: '300+ TCS Technical & Placement Interview Questions & Answers 2026' },
   { id: 'wipro', name: 'Wipro', sets: '15 Question Sets', count: 98, logoType: 'wipro', pdfUrl: '/pdfs/wipro.pdf', pdfTitle: 'Wipro Elite & Turbo Technical Interview Questions 2026' },
   { id: 'cognizant', name: 'Cognizant', sets: '12 Question Sets', count: 85, logoType: 'cognizant', pdfUrl: '/pdfs/cognizant.pdf', pdfTitle: '100+ Cognizant GenC & Technical Interview Questions 2026' },
@@ -86,6 +86,99 @@ export const COMPANIES = [
   { id: 'amazon', name: 'Amazon', sets: '10 Question Sets', count: 75, logoType: 'amazon', pdfUrl: '/pdfs/accenture.pdf', pdfTitle: 'Amazon & Top Tech Technical Interview Guide 2026' },
   { id: 'tech-mahindra', name: 'Tech Mahindra', sets: '8 Question Sets', count: 62, logoType: 'tech-mahindra', pdfUrl: '/pdfs/tcs.pdf', pdfTitle: 'Tech Mahindra Enterprise Technical Interview Guide 2026' },
 ];
+
+export const DEV_COMPANIES = [
+  { 
+    id: 'tcs', 
+    name: 'TCS', 
+    sets: '10 Pages', 
+    pageCount: 10, 
+    logoType: 'tcs', 
+    pdfUrl: '/pdfs/TCS_NQT_Interview_Questions.pdf', 
+    fileName: 'TCS_NQT_Interview_Questions.pdf', 
+    pdfTitle: 'TCS NQT Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'wipro', 
+    name: 'Wipro', 
+    sets: '7 Pages', 
+    pageCount: 7, 
+    logoType: 'wipro', 
+    pdfUrl: '/pdfs/WIPRO%20PDF.pdf', 
+    fileName: 'WIPRO PDF.pdf', 
+    pdfTitle: 'Wipro Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'cognizant', 
+    name: 'Cognizant', 
+    sets: '16 Pages', 
+    pageCount: 16, 
+    logoType: 'cognizant', 
+    pdfUrl: '/pdfs/COGNIZANT%20PDF.pdf', 
+    fileName: 'COGNIZANT PDF.pdf', 
+    pdfTitle: 'Cognizant Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'capgemini', 
+    name: 'Capgemini', 
+    sets: '6 Pages', 
+    pageCount: 6, 
+    logoType: 'capgemini', 
+    pdfUrl: '/pdfs/CAPGIMINI%20PDF.pdf', 
+    fileName: 'CAPGIMINI PDF.pdf', 
+    pdfTitle: 'Capgemini Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'infosys', 
+    name: 'Infosys', 
+    sets: '7 Pages', 
+    pageCount: 7, 
+    logoType: 'infosys', 
+    pdfUrl: '/pdfs/INFOSYS%20PDF.pdf', 
+    fileName: 'INFOSYS PDF.pdf', 
+    pdfTitle: 'Infosys Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'accenture', 
+    name: 'Accenture', 
+    sets: '11 Pages', 
+    pageCount: 11, 
+    logoType: 'accenture', 
+    pdfUrl: '/pdfs/ACCENTURE%20PDF.pdf', 
+    fileName: 'ACCENTURE PDF.pdf', 
+    pdfTitle: 'Accenture Interview Questions', 
+    hasPdf: true 
+  },
+  { 
+    id: 'amazon', 
+    name: 'Amazon', 
+    sets: 'PDF Coming Soon', 
+    pageCount: 0, 
+    logoType: 'amazon', 
+    pdfUrl: null, 
+    fileName: null, 
+    pdfTitle: 'Amazon Interview Questions', 
+    hasPdf: false 
+  },
+  { 
+    id: 'tech-mahindra', 
+    name: 'Tech Mahindra', 
+    sets: 'PDF Coming Soon', 
+    pageCount: 0, 
+    logoType: 'tech-mahindra', 
+    pdfUrl: null, 
+    fileName: null, 
+    pdfTitle: 'Tech Mahindra Interview Questions', 
+    hasPdf: false 
+  },
+];
+
+export const COMPANIES = DATA_ANALYST_COMPANIES;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
