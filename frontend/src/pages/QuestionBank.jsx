@@ -104,13 +104,15 @@ const QuestionBank = () => {
     return DOMAINS.find(d => d.id === selectedDomainId) || DOMAINS[0];
   }, [selectedDomainId]);
 
-  // Data Analyst domain check: only Data Analyst has the AmbitionBox/Topfolio questions & PDF view
-  const isDataAnalyst = selectedDomainId === 'data-analyst';
+  // Developer PDF domains: frontend, backend, full stack
+  const isDevPdfDomain = useMemo(() => {
+    return ['frontend-react', 'backend-python', 'full-stack'].includes(selectedDomainId);
+  }, [selectedDomainId]);
 
-  // Active companies list: Data Analyst has the 8 verified companies (with updated Amazon & Tech Mahindra), other domains use standard COMPANIES
+  // Active companies list (Dev companies for frontend/backend/fullstack; original Data Analyst companies for others)
   const activeCompanies = useMemo(() => {
-    return isDataAnalyst ? DATA_ANALYST_COMPANIES : COMPANIES;
-  }, [isDataAnalyst]);
+    return isDevPdfDomain ? DEV_COMPANIES : DATA_ANALYST_COMPANIES;
+  }, [isDevPdfDomain]);
 
   // Active company object
   const currentCompany = useMemo(() => {
@@ -517,7 +519,7 @@ const QuestionBank = () => {
                     {currentDomain.name}
                   </h1>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    Select a company to explore interview questions for {currentDomain.name} role.
+                    Select a company to view the official technical interview questions document.
                   </p>
                 </div>
               </div>
@@ -558,7 +560,9 @@ const QuestionBank = () => {
                       <div>
                         <div className="text-sm font-bold text-slate-900">{comp.name}</div>
                         <div className="text-xs text-slate-400 mt-0.5">
-                          {comp.sets}
+                          {isDevPdfDomain 
+                            ? (comp.hasPdf ? `${comp.pageCount} Pages • PDF` : 'PDF Coming Soon')
+                            : comp.sets}
                         </div>
                       </div>
                     </div>
@@ -574,8 +578,8 @@ const QuestionBank = () => {
               })}
             </div>
 
-            {/* View Mode Toggle: Only shown for Data Analyst */}
-            {isDataAnalyst && (
+            {/* View Mode Toggle: Shown for Data Analyst & other non-dev domains */}
+            {!isDevPdfDomain && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-2">
                   <button
@@ -600,7 +604,7 @@ const QuestionBank = () => {
                       }`}
                     >
                       <FileText size={14} />
-                      <span>{currentCompany.id === 'amazon' ? 'Topfolio PDF' : 'AmbitionBox PDF'}</span>
+                      <span>AmbitionBox PDF</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                         activeCompanyTab === 'pdf' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
                       }`}>
@@ -613,9 +617,7 @@ const QuestionBank = () => {
                 {currentCompany.pdfUrl && (
                   <div className="flex items-center gap-2 text-xs text-slate-500 pr-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>
-                      Questions extracted directly from official <strong>{currentCompany.name} {currentCompany.id === 'amazon' ? 'Topfolio' : 'AmbitionBox'} PDF</strong>
-                    </span>
+                    <span>Questions extracted directly from official <strong>{currentCompany.name} AmbitionBox PDF</strong></span>
                   </div>
                 )}
               </div>
@@ -624,10 +626,17 @@ const QuestionBank = () => {
         )}
 
         {/* View rendering:
-            - If in Drilldown View, domain is Data Analyst, and PDF tab is active: display AmbitionBox / Topfolio PDF
-            - Otherwise: display interactive question bank with search, categories, filters & cards
+            1) Developer domains (Frontend, Backend, Full Stack): display CompanyPdfViewer directly with user PDFs
+            2) Data Analyst / other domains when PDF tab is active: display original AmbitionBox PDF view
+            3) Otherwise: interactive question list
         */}
-        {viewMode === 'drilldown' && isDataAnalyst && activeCompanyTab === 'pdf' ? (
+        {viewMode === 'drilldown' && isDevPdfDomain ? (
+          <CompanyPdfViewer
+            company={currentCompany}
+            domainName={currentDomain.name}
+            onSelectCompany={(cid) => setSelectedCompanyId(cid)}
+          />
+        ) : viewMode === 'drilldown' && activeCompanyTab === 'pdf' ? (
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3.5">
